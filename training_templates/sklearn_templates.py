@@ -14,7 +14,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.ensemble import RandomForestClassifier
-from training_templates.utils import get_commit_info
+from training_templates.training_templates.utils import get_commit_info
 from typing import List, Dict, Any, Union, Callable
 import xgboost as xgb
 

@@ -25,7 +25,7 @@ def sample_pandas_dataframe(dir=None):
              "Survived": "int32"}
     
     if not dir:
-        dir = "./tests/data/sample_features_100.csv"
+        dir = "./tests/data/sample_features.csv"
     
     sample_dataframe = pd.read_csv(dir, header=0, dtype=dtype)
     return sample_dataframe
