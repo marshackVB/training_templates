@@ -4,6 +4,16 @@
 
 # COMMAND ----------
 
+from training_templates import SkLearnHyperoptBase, XGBoostHyperoptTrainer, RandomForeastHyperoptTrainer
+
+from training_templates.data_utils import train_test_split
+
+from training_templates.utils import (get_or_create_experiment,
+                                      get_yaml_config,
+                                      get_commit_info)
+
+# COMMAND ----------
+
 from hyperopt import hp
 
 from training_templates.sklearn_templates import SkLearnHyperoptBase, XGBoostHyperoptTrainer, RandomForeastHyperoptTrainer

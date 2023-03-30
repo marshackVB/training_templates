@@ -1,16 +1,15 @@
-import os
-from pathlib import Path
+import logging
 import shutil
 import tempfile
-from unittest.mock import patch
+from pathlib import Path
+
+import mlflow
 import pytest
 from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession
-import logging
-import mlflow
-from training_templates.tests.data_loading_utils import sample_spark_dataframe
-from training_templates.training_templates.data_utils import train_test_split
 
+from tests.load_sample_features import sample_spark_dataframe
+from training_templates.data_utils import train_test_split
 
 
 @pytest.fixture(scope="session")
@@ -49,12 +48,17 @@ def feature_table():
 
     df = sample_spark_dataframe()
 
-    feature_table_name = 'default.feature_table'
-    df.write.mode('overwrite').format('delta').saveAsTable(feature_table_name)
+    feature_table_name = "default.feature_table"
+    df.write.mode("overwrite").format("delta").saveAsTable(feature_table_name)
 
-    train_test_split(feature_table_name, unique_id='PassengerId', train_val_size=0.8, allow_overwrite=True)
+    train_test_split(
+        feature_table_name,
+        unique_id="PassengerId",
+        train_val_size=0.8,
+        allow_overwrite=True,
+    )
 
-    yield 'default.feature_table'
+    yield "default.feature_table"
 
 
 @pytest.fixture(scope="session", autouse=True)
