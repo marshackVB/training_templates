@@ -22,6 +22,10 @@ jobs:
         run: |
           conda install -c conda-forge openjdk=11.0.15
 
+      - name: Upgrade pip
+        run: |
+          python3 -m pip install --upgrade pip
+
       - name: Pip install all requirements
         run: |
           pip install -e ".[local,test]"
@@ -37,7 +41,7 @@ jobs:
       - name: Run mypy
         run: |
           mypy ./training_templates
-          
+
       - name: Run unit tests
         run: |
           pytest ./tests -v
