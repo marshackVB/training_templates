@@ -40,6 +40,7 @@ jobs:
 
       - name: Run mypy
         run: |
+          mypy --install-types
           mypy ./training_templates
 
       - name: Run unit tests
