@@ -10,8 +10,7 @@ jobs:
       max-parallel: 5
     steps:
       - uses: actions/checkout@v3
-      - name: Install conda
-        uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v2
         with:
           python-version: "3.9"
           miniconda-version: latest
