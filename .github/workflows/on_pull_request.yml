@@ -1,46 +1,35 @@
 name: Run unit linters and unit tests
-
-on: 
+on:
   push:
     branches:
-     - feature
-
+      - feature
 jobs:
   linter_and_unit_tests:
-  
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 5
-
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Install conda
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        python-version: '3.9'
-        miniconda-version: "latest"
-
-    - name: Intsall JDK
-      run: |
-       conda install -c conda-forge openjdk=11.0.15
-        
-    - name: Pip install all requirements
-      run: |
-       pip install -e ".[local,test]"
-       
-    - name: Run isort
-      run: |
-        isort ./training_templates
-
-    - name: Run black
-      run: |
-        black ./training_templates
-
-    - name: Run mypy
-      run: |
-        mypy ./training_templates
-
-    - name: Run unit tests
-    - run: |
-        pytest ./tests -v
+      - uses: actions/checkout@v3
+      - name: Install conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: "3.9"
+          miniconda-version: latest
+      - name: Intsall JDK
+        run: |
+          conda install -c conda-forge openjdk=11.0.15
+      - name: Pip install all requirements
+        run: |
+          pip install -e ".[local,test]"
+      - name: Run isort
+        run: |
+          isort ./training_templates
+      - name: Run black
+        run: |
+          black ./training_templates
+      - name: Run mypy
+        run: |
+          mypy ./training_templates
+      - name: Run unit tests
+      - run: |
+          pytest ./tests -v
