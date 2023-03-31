@@ -36,7 +36,7 @@ jobs:
 
       - name: Run black
         run: |
-          black ./training_templates
+          black ./training_templates --check
 
       - name: Run mypy
         run: |
