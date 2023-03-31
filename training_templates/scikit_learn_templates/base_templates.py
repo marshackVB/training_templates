@@ -103,10 +103,7 @@ class SkLearnHyperoptBase(SkLearnPipelineABC):
         release_version: The release version of othe code training the model; this is intended to be assigned programatically.
     """
 
-    def __init__(
-        self,
-        model: Callable,
-        model_name: str,
+    def __init__(self,  model: Callable, model_name: str,
         delta_feature_table: str,
         delta_train_val_id_table: str,
         train_size: float,
