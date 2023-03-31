@@ -1,5 +1,3 @@
-from argparse import Namespace
-
 import mlflow
 
 
@@ -18,8 +16,7 @@ def get_or_create_experiment(experiment_location: str) -> None:
 
 
 def get_commit_info(commit_sha, release_version):
-    tags = {"commit_sha": commit_sha,
-            "release_version": release_version}
+    tags = {"commit_sha": commit_sha, "release_version": release_version}
     return tags
 
 

@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Union
 import mlflow
 import numpy as np
 import pandas as pd
-from hyperopt import STATUS_OK, Trials, fmin, tpe
+from hyperopt import Trials, fmin, tpe
 from hyperopt.early_stop import no_progress_loss
 from pyspark.sql import SparkSession
 from sklearn.compose import ColumnTransformer
@@ -103,7 +103,10 @@ class SkLearnHyperoptBase(SkLearnPipelineABC):
         release_version: The release version of othe code training the model; this is intended to be assigned programatically.
     """
 
-    def __init__(self,  model: Callable, model_name: str,
+    def __init__(
+        self,
+        model: Callable,
+        model_name: str,
         delta_feature_table: str,
         delta_train_val_id_table: str,
         train_size: float,
@@ -198,7 +201,7 @@ class SkLearnHyperoptBase(SkLearnPipelineABC):
         )
 
         return preprocessing_pipeline
-        
+
     def init_model(self, model_params: Dict[str, Any]) -> Callable:
         """
         Create a function that returns an instance of the model
@@ -283,7 +286,7 @@ class SkLearnHyperoptBase(SkLearnPipelineABC):
             early_stop_fn=early_stop_fn,
         )
 
-        final_model_parameters:Dict[str, Union[str, int, float]] = {}
+        final_model_parameters: Dict[str, Union[str, int, float]] = {}
 
         for parameter, value in best_params.items():
             if parameter in ["n_estimators", "max_depth"]:

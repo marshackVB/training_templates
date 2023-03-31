@@ -32,7 +32,7 @@ jobs:
 
       - name: Run isort
         run: |
-          isort ./training_templates
+          isort ./training_templates --check
 
       - name: Run black
         run: |
