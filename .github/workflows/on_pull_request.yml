@@ -18,7 +18,7 @@ jobs:
           python-version: "3.9"
           miniconda-version: latest
 
-      - name: Intsall JDK
+      - name: Install JDK
         run: |
           conda install -c conda-forge openjdk=11.0.15
 
@@ -40,7 +40,6 @@ jobs:
 
       - name: Run mypy
         run: |
-          mypy --install-types
           mypy ./training_templates
 
       - name: Run unit tests
