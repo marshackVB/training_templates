@@ -16,8 +16,14 @@ requires-python = ">=3.7"
 # https://pypi.org/project/pip-tools/
 # https://hynek.me/til/pip-tools-and-pyproject-toml/
 [project.optional-dependencies]
-local = ["pyspark>=3.0", "delta-spark>=2.0", "pre-commit"]
-test = ["pytest>=7.0", "coverage[toml]", "pytest-cov", "isort", "black", "mypy"]
+local = ["pyspark>=3.0", "delta-spark>=2.0"]
+test = ["pytest>=7.0", "coverage[toml]", "pytest-cov", "black", "mypy", Flake8-pyproject]
 
 [tool.mypy]
 ignore_missing_imports = true
+
+[tool.flake8]
+ignore = ['E501']
+per-file-ignores = [
+    '__init__.py:F401',
+]

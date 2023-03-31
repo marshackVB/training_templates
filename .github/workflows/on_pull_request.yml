@@ -30,13 +30,13 @@ jobs:
         run: |
           pip install -e ".[local,test]"
 
-      - name: Run isort
-        run: |
-          isort ./training_templates --check
-
       - name: Run black
         run: |
           black ./training_templates --check
+
+      - name: Run flake8
+        run: |
+          flake8 ./training_templates
 
       - name: Run mypy
         run: |
