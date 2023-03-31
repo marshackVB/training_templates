@@ -7,13 +7,16 @@ name = "training-templates"
 version = "0.0.1"
 description = "A collection of templated workflows for machine learning model training."
 readme = "README.md"
-dependencies = []
+dependencies = ["scikit-learn>=1.0", "pandas>=1.0", "mlflow>=2.0", "xgboost>=1.0", "hyperopt"]
 requires-python = ">=3.7"
+
+[tool.setuptools.package-data]
+"mypkg.data" = ["*.csv"]
 
 # https://pypi.org/project/pip-tools/
 # https://hynek.me/til/pip-tools-and-pyproject-toml/
 [project.optional-dependencies]
-local = ["pyspark>=3.0", "delta-spark>=2.0", "scikit-learn>=1.0", "pandas>=1.0", "mlflow>=2.0", "xgboost>=1.0", "hyperopt"]
+local = ["pyspark>=3.0", "delta-spark>=2.0"]
 test = ["pytest>=7.0", "coverage[toml]", "pytest-cov", "isort", "black", "mypy"]
 
 [tool.mypy]
