@@ -17,7 +17,7 @@ requires-python = ">=3.7"
 # https://hynek.me/til/pip-tools-and-pyproject-toml/
 [project.optional-dependencies]
 local = ["pyspark>=3.0", "delta-spark>=2.0"]
-test = ["pytest>=7.0", "coverage[toml]", "pytest-cov", "black", "mypy", Flake8-pyproject]
+test = ["pytest>=7.0", "coverage[toml]", "pytest-cov", "black", "mypy", "Flake8-pyproject"]
 
 [tool.mypy]
 ignore_missing_imports = true
