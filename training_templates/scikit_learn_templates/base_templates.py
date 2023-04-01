@@ -19,7 +19,7 @@ from training_templates.utils import get_commit_info
 
 class SkLearnPipelineABC(ABC):
     """
-    This abstract class defines a workflow for a scikit-learn based training.
+    This abstract class defines a workflow for scikit-learn based training.
     """
 
     @abstractmethod
