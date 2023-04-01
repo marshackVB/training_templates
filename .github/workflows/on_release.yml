@@ -29,6 +29,7 @@ jobs:
       run: |
         git config --global user.email "carter.marshall@gmail.com"
         git config --global user.name "marshackVB"
+        git commit -a -m "Update wheel release version"
 
     - name: Push changes
       uses: ad-m/github-push-action@master
