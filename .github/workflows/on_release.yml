@@ -1,10 +1,9 @@
 # Package the libray using build (ahttps://pypa-build.readthedocs.io/en/latest/)
 
-on:
-  release:
-    types: [released]
-    branches: 
-      -master
+on: 
+  push:
+    branches:
+     - master
 
 jobs:
   build_package:
@@ -21,6 +20,10 @@ jobs:
     - uses: actions/checkout@v3
       with:
         ref: master
+        
+    - run: |
+        git config user.email "carter.marshall@gmail.com"
+        git config user.name "marshackVB"
         
     - run: |
         git config user.email "carter.marshall@gmail.com"
