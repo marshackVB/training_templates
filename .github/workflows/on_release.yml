@@ -1,3 +1,5 @@
+# Package the libray using build (ahttps://pypa-build.readthedocs.io/en/latest/)
+
 on:
   release:
     types: [released]
@@ -20,4 +22,5 @@ jobs:
         
     - name: Build package
       run: |
+        pip install build
         python -m build
