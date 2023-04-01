@@ -18,6 +18,8 @@ jobs:
       with:
         python-version: '3.9'
     - uses: actions/checkout@v3
+      with:
+        ref: master
     - run: |
         pip install build
         python -m build
