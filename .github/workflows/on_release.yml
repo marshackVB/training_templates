@@ -17,12 +17,18 @@ jobs:
     - uses: actions/setup-python@v3
       with:
         python-version: '3.9'
+
     - uses: actions/checkout@v3
       with:
         ref: master
+        
+    - run: |
+        git config user.email "carter.marshall@gmail.com"
+        git config user.name "marshackVB"
+        
     - run: |
         pip install build
-        python -m build
-        git config --global user.email "carter.marshall@gmail.com"
-        git config --global user.name "marshackVB"
-        git commit -a -m "Update wheel release version"
+        python3 -m build
+        git add -f ./dist/*.whl
+        git commit -m 'Update wheel release version'
+        git push
