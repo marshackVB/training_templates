@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "training-templates"
 version = "0.0.1"
-description = "A collection of templated workflows for machine learning model training."
+description = "A collection of templated workflows for machine learning model training with hyperopt and mlflow integration."
 readme = "README.md"
 dependencies = ["scikit-learn>=1.0", "pandas>=1.0", "mlflow>=2.0", "xgboost>=1.0", "hyperopt"]
 requires-python = ">=3.7"
