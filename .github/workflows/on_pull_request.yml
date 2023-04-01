@@ -1,46 +1,48 @@
 name: Run unit linters and unit tests
-
 on: 
-  push:
+  pull_request:
+    types: [opened]
     branches:
-     - feature_branch
-
+     - master
 jobs:
   linter_and_unit_tests:
-  
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 5
-
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout branch
+        uses: actions/checkout@v3
 
-    - name: Install conda
-      uses: conda-incubator/setup-miniconda@v
-      with:
-        python-version: '3.9'
-        miniconda-version: "latest"
+      - name: Install anaconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: "3.9"
+          miniconda-version: latest
 
-    - name: Intsall JDK
-      run: |
-       conda install -c conda-forge openjdk=11.0.15
-        
-    - name: Pip install all requirements
-      run: |
-       pip install -e ".[local,test]"
-       
-    - name: Run isort
-      run: |
-        isort ./training_templates
+      - name: Install JDK
+        run: |
+          conda install -c conda-forge openjdk=11.0.15
 
-    - name: Run black
-      run: |
-        black ./training_templates
+      - name: Upgrade pip
+        run: |
+          python3 -m pip install --upgrade pip
 
-    - name: Run mypy
-      run: |
-        mypy ./training_templates
+      - name: Pip install all requirements
+        run: |
+          pip install -e ".[local,test]"
 
-    - name: Run unit tests
-    - run: |
-        pytest ./tests -v
+      - name: Run black
+        run: |
+          black ./training_templates --check
+
+      - name: Run flake8
+        run: |
+          flake8 ./training_templates
+
+      - name: Run mypy
+        run: |
+          mypy --package training_templates
+
+      - name: Run unit tests
+        run: |
+          pytest ./tests -v

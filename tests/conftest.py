@@ -8,8 +8,7 @@ import pytest
 from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession
 
-from tests.load_sample_features import sample_spark_dataframe
-from training_templates.data_utils import train_test_split
+from training_templates.data_utils import train_test_split, sample_spark_dataframe
 
 
 @pytest.fixture(scope="session")

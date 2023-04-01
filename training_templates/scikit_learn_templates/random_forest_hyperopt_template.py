@@ -13,11 +13,7 @@ class RandomForeastHyperoptTrainer(SkLearnHyperoptBase):
     """
 
     def __init__(self, *args, **kwargs):
-
-        super().__init__(RandomForestClassifier,
-                         "random_forest",
-                         *args, 
-                         **kwargs)
+        super().__init__(RandomForestClassifier, "random_forest", *args, **kwargs)
 
     def config_hyperopt_objective_fn(self, X_train_transformed, X_val_transformed):
         """

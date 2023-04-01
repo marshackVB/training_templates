@@ -1,8 +1,7 @@
 import pandas as pd
 import pytest
 
-from tests.load_sample_features import sample_spark_dataframe
-from training_templates.data_utils import train_test_split
+from training_templates.data_utils import train_test_split, sample_spark_dataframe
 
 
 @pytest.mark.parametrize("train_val_size", [0.1, 0.5, 0.8])

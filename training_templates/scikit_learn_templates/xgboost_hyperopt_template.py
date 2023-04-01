@@ -13,11 +13,7 @@ class XGBoostHyperoptTrainer(SkLearnHyperoptBase):
     """
 
     def __init__(self, *args, **kwargs):
-
-        super().__init__(xgb.XGBClassifier,
-                         "xgboost",
-                         *args, 
-                         **kwargs)
+        super().__init__(xgb.XGBClassifier, "xgboost", *args, **kwargs)
 
     def config_hyperopt_objective_fn(self, X_train_transformed, X_val_transformed):
         """
