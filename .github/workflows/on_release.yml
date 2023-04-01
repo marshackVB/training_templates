@@ -24,3 +24,14 @@ jobs:
       run: |
         pip install build
         python -m build
+
+    - name: Configure git
+      run: |
+        git config --global user.email "carter.marshall@gmail.com"
+        git config --global user.name "marshackVB"
+
+    - name: Commit and push wheel
+      run: |
+        git add -f ./dist/*.whl
+        git commit -m 'Push updated wheel'
+        git push
