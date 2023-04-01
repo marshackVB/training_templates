@@ -14,25 +14,13 @@ jobs:
       max-parallel: 5
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v3
+    - uses: actions/setup-python@v3
       with:
         python-version: '3.9'
-        
-    - name: Build package
+    - uses: actions/checkout@v3
       run: |
         pip install build
         python -m build
-
-    - name: Configure git
-      run: |
         git config --global user.email "carter.marshall@gmail.com"
         git config --global user.name "marshackVB"
         git commit -a -m "Update wheel release version"
-
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: ${{ github.ref }}
