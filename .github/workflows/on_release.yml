@@ -30,8 +30,8 @@ jobs:
         git config --global user.email "carter.marshall@gmail.com"
         git config --global user.name "marshackVB"
 
-    - name: Commit and push wheel
-      run: |
-        git add -f ./dist/*.whl
-        git commit -m 'Push updated wheel'
-        git push origin HEAD:master
+    name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
