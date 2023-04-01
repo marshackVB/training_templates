@@ -34,4 +34,4 @@ jobs:
       run: |
         git add -f ./dist/*.whl
         git commit -m 'Push updated wheel'
-        git push
+        git push origin HEAD:master
