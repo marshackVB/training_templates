@@ -13,6 +13,21 @@
 
 # COMMAND ----------
 
+# The requirements file exists so that dependecies can be installed for interactive 
+# testing/experimentation in Notebooks. This way, the project dependecies can be installed without
+# building the package. Module functions and classes can be edited in VSCode and synced to the Repo
+# in real time. Then, Notebook cell runs will capture the updates due to the use of %autoreload magic 
+# functions, without the need to detach and reatach the Notebook to the Cluster.
+pip install -r ../requirements.txt -q
+
+# COMMAND ----------
+
+# https://ipython.org/ipython-doc/3/config/extensions/autoreload.html
+%load_ext autoreload
+%autoreload 2
+
+# COMMAND ----------
+
 from hyperopt import hp
 
 from training_templates import SkLearnHyperoptBase, XGBoostHyperoptTrainer, RandomForestHyperoptTrainer
