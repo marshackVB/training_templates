@@ -1,0 +1,42 @@
+on:
+  release:
+    types: [released]
+    branches: 
+      -master
+
+jobs:
+  build_package:
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_VERSION: ${{ github.ref_name }}
+      COMMIT_SHA: ${{ github.sha }}
+      GEMFURY_PUSH_TOKEN:  ${{ secrets.GEMFURY_PUSH_TOKEN }}
+
+    steps:
+    - name: Install python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.9'
+
+    - name: Checkout branch
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ env.RELEASE_VERSION }}
+
+    - name: Update package version file
+      run: |
+        echo $RELEASE_VERSION > training_templates/VERSION
+        echo "$(cat training_templates/VERSION)"
+
+    - name: Build package
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+        python -m build
+
+    - name: Push package to gemfury
+      run: |
+        export PACKAGE_NAME=$(find ./dist -type f -name "training_templates-$RELEASE_VERSION-*.whl")
+        curl -F package=@$PACKAGE_NAME https://$GEMFURY_PUSH_TOKEN@push.fury.io/marshackVB/
+        

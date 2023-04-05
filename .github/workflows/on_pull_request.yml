@@ -1,0 +1,51 @@
+name: Run unit linters and unit tests
+on: 
+  pull_request:
+    types: [opened]
+    branches:
+     - master
+    paths:
+      - training_templates/**
+
+jobs:
+  linter_and_unit_tests:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 5
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v3
+
+      - name: Install anaconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: "3.9"
+          miniconda-version: latest
+
+      - name: Install JDK
+        run: |
+          conda install -c conda-forge openjdk=11.0.15
+
+      - name: Upgrade pip
+        run: |
+          python3 -m pip install --upgrade pip
+
+      - name: Pip install all requirements
+        run: |
+          pip install -e ".[local,test]"
+
+      - name: Run black
+        run: |
+          black ./training_templates --check
+
+      - name: Run flake8
+        run: |
+          flake8 ./training_templates
+
+      - name: Run mypy
+        run: |
+          mypy --package training_templates
+
+      - name: Run unit tests
+        run: |
+          pytest ./tests -v
