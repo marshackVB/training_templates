@@ -14,35 +14,36 @@ from sklearn.pipeline import Pipeline
 from training_templates import RandomForestHyperoptTrainer
 
 
-hyperparameter_space = {"n_estimators": hp.quniform("n_estimators", 2, 10, 1),
-                        "max_features": hp.uniform("max_features", 0.5, 1.0),
-                        "criterion": hp.choice("criterion", ["gini", "entropy"])}
-
-
-def test_join_to_pandas(spark, feature_table, training_args):
+@pytest.fixture
+def trainer(spark, feature_table, training_args):
+    hyperparameter_space = {
+        "n_estimators": hp.quniform("n_estimators", 2, 10, 1),
+        "max_features": hp.uniform("max_features", 0.5, 1.0),
+        "criterion": hp.choice("criterion", ["gini", "entropy"]),
+    }
 
     training_args["hyperparameter_space"] = hyperparameter_space
 
     trainer = RandomForestHyperoptTrainer(
         feature_table, f"{feature_table}_train", **training_args
     )
+    return trainer
 
+
+def test_join_to_pandas(trainer):
+    """
+    Spark DataFrames of feature values and test/val record ids are
+    joined and converted to a Pandas DataFrame.
+    """
     assert isinstance(trainer.feature_df, pd.DataFrame)
     assert trainer.feature_df.shape[0] > 0
 
 
-def test_types_split_train_val_test(spark, feature_table, training_args):
+def test_types_split_train_val_test(trainer):
     """
-    Feature tables are Pandas DataFrames and label tables are
-    Pandas Series
+    Pandas DataFrame of features values are properly split into training
+    and validation datasets
     """
-
-    training_args["hyperparameter_space"] = hyperparameter_space
-
-    trainer = RandomForestHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
-    )
-
     trainer.train_test_split()
 
     assert isinstance(trainer.X_train, pd.core.frame.DataFrame)
@@ -53,29 +54,24 @@ def test_types_split_train_val_test(spark, feature_table, training_args):
 
 
 @pytest.mark.parametrize(
-    "spark, feature_table, training_args, train_size, random_state, shuffle",
+    "trainer, train_size, random_state, shuffle",
     [
-        ("spark", "feature_table", "training_args", 0.7, 123, False),
-        ("spark", "feature_table", "training_args", 0.6, 123, True),
-        ("spark", "feature_table", "training_args", 0.5, 999, True),
-    ], indirect=["spark", "feature_table", "training_args"]
+        ("trainer", 0.7, 123, False),
+        ("trainer", 0.6, 123, True),
+        ("trainer", 0.5, 999, True),
+    ],
+    indirect=["trainer"],
 )
-def test_proportions_split_train_val_test(
-    spark, feature_table, training_args, train_size, random_state, shuffle, request
-):
-
-    training_args["hyperparameter_space"] = hyperparameter_space
-    training_args["train_size"] = train_size
-    training_args["random_state"] = random_state
-    training_args["train_eval_shuffle"] = shuffle
-
-    trainer = RandomForestHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
-    )
+def test_proportions_split_train_val_test(trainer, train_size, random_state, shuffle):
+    """
+    Training and validation dataset split proportions are as expected
+    """
+    trainer.train_size = train_size
+    trainer.random_state = random_state
+    trainer.train_eval_shuffle = shuffle
 
     trainer.train_test_split()
 
-    # Train / val ratio is as expected
     X_train_cnt = trainer.X_train.shape[0]
     X_val_cnt = trainer.X_val.shape[0]
     y_train_cnt = trainer.y_train.shape[0]
@@ -89,14 +85,10 @@ def test_proportions_split_train_val_test(
     assert round(y_val_cnt / combined_cnt, 1) == val_size
 
 
-def test_no_obs_overlap_split_train_val_test(spark, feature_table, training_args):
-
-    training_args["hyperparameter_space"] = hyperparameter_space
-
-    trainer = RandomForestHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
-    )
-
+def test_no_obs_overlap_split_train_val_test(trainer):
+    """
+    Training and validation dataset records do not overlap.
+    """
     trainer.train_test_split()
 
     common_train_observations = set(trainer.X_train.index) & set(trainer.X_val.index)
@@ -106,24 +98,16 @@ def test_no_obs_overlap_split_train_val_test(spark, feature_table, training_args
     assert len(common_val_observations) == 0
 
 
-def test_fit_predict_model_pipeline(spark, feature_table, training_args):
+def test_fit_predict_model_pipeline(trainer):
     """
     Model training pipeline component types are correct; all column types
     are passed to the model pipeline; model pipeline prediction works
     as expected.
     """
-    training_args["hyperparameter_space"] = hyperparameter_space
-
-    trainer = RandomForestHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
-    )
-
     trainer.train_test_split()
-
     model_params = {"n_estimators": 10}
     model_pipeline = trainer.init_model_pipeline(model_params)
 
-    # Pipeline and component types are as expected
     assert isinstance(model_pipeline["preprocessing_pipeline"], ColumnTransformer)
     assert isinstance(model_pipeline["model"], RandomForestClassifier)
     assert isinstance(model_pipeline, Pipeline)
@@ -134,7 +118,7 @@ def test_fit_predict_model_pipeline(spark, feature_table, training_args):
         column_transformations[transformer[0]] = transformer[2]
 
     for column_type, list_of_columns in column_transformations.items():
-        assert list_of_columns == training_args[column_type]
+        assert list_of_columns == trainer.__dict__[column_type]
 
     model_pipeline.fit(trainer.X_train, trainer.y_train)
     predictions = model_pipeline.predict_proba(trainer.X_val)
@@ -142,15 +126,13 @@ def test_fit_predict_model_pipeline(spark, feature_table, training_args):
     assert predictions.shape == (observations, 2)
 
 
-def test_format_hyperopt_for_sklearn(spark, feature_table, training_args):
+def test_format_hyperopt_for_sklearn(trainer):
+    """
+    Hyperopt parameter types are properly converted to scikit-learn's
+    expected types when they differ.
+    """
 
-    training_args["hyperparameter_space"] = hyperparameter_space
-
-    trainer = RandomForestHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
-    )
-
-    class DummyModel():
+    class DummyModel:
         def __init__(self):
             self.a = 1
             self.b = 1.0
@@ -159,28 +141,20 @@ def test_format_hyperopt_for_sklearn(spark, feature_table, training_args):
 
     trainer.model = DummyModel
 
-    hyperopt_params = {"a": 9.0,
-                       "b": 10.0,
-                       "c": "c",
-                       "d": 100.0}
+    hyperopt_params = {"a": 9.0, "b": 10.0, "c": "c", "d": 100.0}
 
     formatted_params = trainer.format_hyperopt_for_sklearn(hyperopt_params)
 
-    expected_params = {"a": 9, 
-                       "b": 10.0, 
-                       "c": 'c', 
-                       "d": 100}
+    expected_params = {"a": 9, "b": 10.0, "c": "c", "d": 100}
 
     assert formatted_params == expected_params
 
 
-def test_hyperopt_objective_fn(spark, feature_table, training_args):
-
-    training_args["hyperparameter_space"] = hyperparameter_space
-
-    trainer = RandomForestHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
-    )
+def test_hyperopt_objective_fn(trainer):
+    """
+    The hyperopt objective function returns a dictionary with the
+    expected data types.
+    """
     trainer.train_test_split()
 
     X_train_transformed, X_val_transformed = trainer.transform_features_for_hyperopt()
@@ -196,35 +170,25 @@ def test_hyperopt_objective_fn(spark, feature_table, training_args):
     assert isinstance(objective_results["metrics"], OrderedDict)
 
 
-def test_hyperopt_search(spark, feature_table, training_args):
-
-    training_args["hyperparameter_space"] = hyperparameter_space
-
-    trainer = RandomForestHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
-    )
-
+def test_hyperopt_search(trainer):
+    """
+    Hyperopt tuning over multiple iterations executes and returns
+    a dictionary.
+    """
     trainer.train_test_split()
-
     best_parameters = trainer.tune_hyperparameters()
-
     assert isinstance(best_parameters, dict)
 
 
-def test_train(spark, feature_table, training_args):
-
-    training_args["hyperparameter_space"] = hyperparameter_space
-
-    trainer = RandomForestHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
-    )
-    
+def test_train(trainer):
+    """
+    The full training workflow executes and logs a model to MLflow that
+    can be loaded an scores data.
+    """
     trainer.train()
-
     logged_model = f"runs:/{trainer.run_id}/model"
     loaded_model = mlflow.pyfunc.load_model(logged_model)
 
     predictions = loaded_model.predict(trainer.X_val)
-
     observations = trainer.X_val.shape[0]
     assert predictions.shape[0] == (observations)

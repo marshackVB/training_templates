@@ -4,8 +4,15 @@ import pytest
 from training_templates.data_utils import train_test_split, sample_spark_dataframe
 
 
-@pytest.mark.parametrize("train_val_size", [0.1, 0.5, 0.8])
+@pytest.mark.parametrize(
+    "spark, train_val_size",
+    [("spark", 0.1), ("spark", 0.5), ("spark", 0.8)],
+    indirect=["spark"],
+)
 def test_train_test_split_proportions(spark, train_val_size):
+    """
+    Test and train/validation dataset split proportions are correct.
+    """
     spark_df = sample_spark_dataframe()
 
     table_name = "default.test_case"
@@ -26,6 +33,10 @@ def test_train_test_split_proportions(spark, train_val_size):
 
 
 def test_train_test_split_forbid_overwrite(spark):
+    """
+    By default, Delta tables for test record ids and train/validation record ids
+    cannot be overwritten.
+    """
     with pytest.raises(Exception) as e:
         spark_df = sample_spark_dataframe(spark)
 
@@ -45,6 +56,10 @@ def test_train_test_split_forbid_overwrite(spark):
 
 
 def test_train_test_split_allow_overwrite(spark):
+    """
+    By changing the allow_overwrite setting to True, Delta tables for test
+    record ids and train/validation record ids cannot be overwritten.
+    """
     spark_df = sample_spark_dataframe()
 
     table_name = "default.test_case"
@@ -79,10 +94,9 @@ def test_train_test_split_allow_overwrite(spark):
 
 def test_train_test_split_single_key_col(spark):
     """
-    Test that both the training and testing datasets contain only
-    one column and that column is the primary key column
+    The Delta tables for testing and train/validation records
+    contain only one column (distinct id column).
     """
-
     spark_df = sample_spark_dataframe()
 
     table_name = "default.test_case"

@@ -60,7 +60,7 @@ def feature_table():
     yield "default.feature_table"
 
 
-@pytest.fixture()
+@pytest.fixture
 def training_args():
     args = {
         "train_size": 0.9,

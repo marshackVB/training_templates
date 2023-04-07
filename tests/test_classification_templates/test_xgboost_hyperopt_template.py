@@ -4,28 +4,33 @@ import copy
 from hyperopt import hp
 import mlflow
 import numpy as np
+import pytest
 
 from training_templates import XGBoostHyperoptTrainer
 
 
-hyperparameter_space = {"max_depth": hp.quniform("max_depth", 2, 10, 1),
-                        'eval_metric': 'auc',
-                        'early_stopping_rounds': 50}
-
-
-def test_format_hyperopt_for_sklearn(spark, feature_table, training_args):
+@pytest.fixture
+def trainer(spark, feature_table, training_args):
+    hyperparameter_space = {
+        "max_depth": hp.quniform("max_depth", 2, 10, 1),
+        "eval_metric": "auc",
+        "early_stopping_rounds": 50,
+    }
 
     training_args["hyperparameter_space"] = hyperparameter_space
 
     trainer = XGBoostHyperoptTrainer(
         feature_table, f"{feature_table}_train", **training_args
     )
+    return trainer
 
-    hyperopt_params = {"a": 1.0,
-                       "b": "b",
-                       "c": 1,
-                       "d": 10.0,
-                       "e": 10.0}
+
+def test_format_hyperopt_for_sklearn(trainer):
+    """
+    Hyperopt parameter types are properly converted to scikit-learn's
+    expected types when they differ.
+    """
+    hyperopt_params = {"a": 1.0, "b": "b", "c": 1, "d": 10.0, "e": 10.0}
 
     convert_to_int = ["a", "d", "e"]
 
@@ -33,23 +38,16 @@ def test_format_hyperopt_for_sklearn(spark, feature_table, training_args):
 
     formated_params = trainer.format_hyperopt_for_sklearn(hyperopt_params)
 
-    expected_result = {"a": 1,
-                       "b": "b",
-                       "c": 1,
-                       "d": 10,
-                       "e": 10.0}
-    
+    expected_result = {"a": 1, "b": "b", "c": 1, "d": 10, "e": 10.0}
+
     assert formated_params == expected_result
 
 
-def test_hyperopt_objective_fn(spark, feature_table, training_args):
-
-    training_args["hyperparameter_space"] = hyperparameter_space
-
-    trainer = XGBoostHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
-    )
-
+def test_hyperopt_objective_fn(trainer):
+    """
+    The hyperopt objective function returns a dictionary with the
+    expected data types.
+    """
     trainer.train_test_split()
 
     X_train_transformed, X_val_transformed = trainer.transform_features_for_hyperopt()
@@ -58,10 +56,8 @@ def test_hyperopt_objective_fn(spark, feature_table, training_args):
         X_train_transformed, X_val_transformed
     )
 
-    params = {"max_depth": 2,
-              "eval_metric": 'auc',
-              "early_stopping_rounds": 50}
-    
+    params = {"max_depth": 2, "eval_metric": "auc", "early_stopping_rounds": 50}
+
     objective_results = objective_fn(params)
 
     loss_type = type(objective_results["loss"])
@@ -70,28 +66,21 @@ def test_hyperopt_objective_fn(spark, feature_table, training_args):
     assert isinstance(objective_results["metrics"], OrderedDict)
 
 
-def test_hyperopt_search(spark, feature_table, training_args):
-
-    training_args["hyperparameter_space"] = hyperparameter_space
-
-    trainer = XGBoostHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
-    )
-
+def test_hyperopt_search(trainer):
+    """
+    Hyperopt tuning over multiple iterations executes and returns
+    a dictionary.
+    """
     trainer.train_test_split()
-
     best_parameters = trainer.tune_hyperparameters()
-
     assert isinstance(best_parameters, dict)
 
 
-def test_train(spark, feature_table, training_args):
-
-    training_args["hyperparameter_space"] = hyperparameter_space
-
-    trainer = XGBoostHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
-    )
+def test_train(trainer):
+    """
+    The full training workflow executes and logs a model to MLflow that
+    can be loaded an scores data.
+    """
     trainer.train()
 
     logged_model = f"runs:/{trainer.run_id}/model"
