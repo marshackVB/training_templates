@@ -19,7 +19,7 @@ class XGBoostHyperoptTrainer(SkLearnHyperoptBase):
     def __init__(self, *args, **kwargs):
         self.convert_to_int = ["max_depth"]
         super().__init__(xgb.XGBClassifier, "xgboost", *args, **kwargs)
-        
+
     def format_hyperopt_for_sklearn(self, hyperopt_params):
         for param, value in hyperopt_params.items():
             if param in self.convert_to_int:
@@ -65,7 +65,7 @@ class XGBoostHyperoptTrainer(SkLearnHyperoptBase):
             return {"status": STATUS_OK, "loss": 1 - best_score, "metrics": metrics}
 
         return hyperopt_objective_fn
-    
+
     def tune_hyperparameters(self):
         """
         Launch the Hyperopt Trials workflow
@@ -98,10 +98,12 @@ class XGBoostHyperoptTrainer(SkLearnHyperoptBase):
         )
 
         best_params = space_eval(self.hyperparameter_space, best_params)
-        best_params['n_estimators'] = trials.best_trial['result']['metrics']['best_iteration']
+        best_params["n_estimators"] = trials.best_trial["result"]["metrics"][
+            "best_iteration"
+        ]
         final_model_parameters = self.format_hyperopt_for_sklearn(best_params)
 
-        to_remove = ['eval_metric', 'early_stopping_rounds']
+        to_remove = ["eval_metric", "early_stopping_rounds"]
         for param in to_remove:
             final_model_parameters.pop(param, None)
 

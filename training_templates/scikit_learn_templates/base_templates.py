@@ -157,7 +157,7 @@ class SkLearnHyperoptBase(SkLearnPipelineABC):
         )
 
         return train_val_features.toPandas()
-    
+
     def train_test_split(self) -> None:
         """
         Split a Pandas DataFrame of features into training and validation datasets
@@ -226,7 +226,7 @@ class SkLearnHyperoptBase(SkLearnPipelineABC):
     ) -> Dict[str, Union[str, int, float]]:
         """
         Convert floating point parameters to integers when scikit-learn
-        expects integers    
+        expects integers
         """
         default_model = self.model()
         for param, value in hyperopt_params.items():
