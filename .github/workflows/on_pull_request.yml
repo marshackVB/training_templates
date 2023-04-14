@@ -20,7 +20,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           python-version: "3.9"
-          miniconda-version: latest
+          activate-environment: test
 
       - name: Install JDK
         run: |

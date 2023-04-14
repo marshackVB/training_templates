@@ -16,87 +16,43 @@ from sklearn.preprocessing import OneHotEncoder
 from training_templates.utils import get_commit_info
 
 
-class SkLearnPipelineABC(ABC):
+class SkLearnPipelineBase(ABC):
     """
-    This abstract class defines a workflow for scikit-learn based training.
-    """
-
-    @abstractmethod
-    def init_preprocessing_pipeline(self):
-        """
-        Return a scikit-learn ColumnTransformers
-        """
-
-    @abstractmethod
-    def init_model(self, params):
-        """
-        Return an instance of the model initialized with
-        a set of hyper-parameters
-        """
-
-    @abstractmethod
-    def init_model_pipeline(self, model_params):
-        """
-        Combine the ColumnTransformer with the model into
-        a scikit-learn Pipeline
-        """
-
-    @abstractmethod
-    def tune_hyperparameters(self):
-        """
-        Run a hyper-parameter search, such as a Hyperopt trials workflow
-        to find the best model parameters. Save these parameters as an
-        instance attribute that can be referenced by the train method
-        """
-
-    @abstractmethod
-    def train(self):
-        """
-        Call the full training workflow, logging all information and
-        artifacts to an MLflow experiment
-        """
-
-
-class SkLearnHyperoptBase(SkLearnPipelineABC, ABC):
-    """
-    This class it intended to be inherited by child classes. It implements a standard workflow to train
-    a scikit-learn model along with MLflow logging. It performs the following steps:
-         - Splits features into training/evaluation datasets.
-         - Creates a data processing and and model training scikit-learn Pipeline.
-         - Searches through a provided hyperparameter space using Hyperopt and returns the best hyperparameters.
-         - Trains a final model with the best hyperparameters.
-         - Logs the trained model as well as training and evaluation fit statistics to an MLflow experiment run.
-
-    Note:
-        This class has one method that is intended to be overridden, config_hyperopt_objective_fn. This method should return
-        a function that represents the Hyperopt objective function. The way this function is specified can differ depending
-        on the model, thus, it is not defined in this class.
+    This class is intended to be inherited by child classes. It implements a typical sci-kit learn data processing workflow that can
+    be integrated into model training classes. It performs the following steps:
+        - Splits features into training/evaluation datasets.
+        - Creates a data processing and and model training scikit-learn Pipeline.
 
     Arguments:
         delta_feature_table: The name of the Delta table containing the model features.
+
         delta_train_val_id_table: The namne of the Delta table that contains the column of observations primary keys
                                 that make up the training and evaluation datasets.
+
         numerical_cols: A list of numerical feature column names.
+
         categorical_cols: A list of categorical feature column names.
+
         binary_ols: A list of binary feature column names.
+
         label_col: The name of the label/target column.
+
         problem_type: One of 'classification' or 'regression'. This is used by the mlflow.evaluate() method to calculated
                       statistics on the evaluation dataset.
-        hyerparameter_space: A dictionary contain the parameter names and hyperopt ranges that define the parameter search space.
-        hyperopt_max_evals: The maximum number of hyperopt experiment runs allowed.
-        hyperopt_iteration_stop_count: Use for early stopping; the maximum experiment allowed before improvement in the validation criteria (the loss
-                                       returned by the hyperopt objective function).
-        hyperopt_early_stopping_threshold: The percentage increase in the hyperopt loss metric that must occure to precent early stopping.
-        mlflow_experiment_location: The directory of the MLflow experiment.
-        mlflow_run_description: A text description to log to an MLflow run.
+
         random_state: And integer to used for initializing methods that perform operations such as train/test split.
-        train_eval_shuffle: Indication of data should be shuffled before spliting features into training and evaluation datasets
+
+        train_eval_shuffle: Indication of data should be shuffled before spliting features into training and evaluation datasets.
+
         commit_hash: The commit hash of the code version training the model; this is intended to be assigned programatically.
+
         release_version: The release version of othe code training the model; this is intended to be assigned programatically.
     """
 
+    @abstractmethod
     def __init__(
         self,
+        *,
         model: Callable,
         model_name: str,
         delta_feature_table: str,
@@ -107,12 +63,6 @@ class SkLearnHyperoptBase(SkLearnPipelineABC, ABC):
         binary_cols: List[str],
         label_col: str,
         problem_type: str,
-        hyperparameter_space: Dict[str, Any],
-        hyperopt_max_evals: int,
-        hyperopt_iteration_stop_count: int,
-        hyperopt_early_stopping_threshold: float,
-        mlflow_experiment_location: str,
-        mlflow_run_description: str,
         random_state: int = 123,
         train_eval_shuffle: bool = True,
         commit_hash: str = "",
@@ -130,12 +80,6 @@ class SkLearnHyperoptBase(SkLearnPipelineABC, ABC):
         self.all_feature_cols = [*numerical_cols, *categorical_cols, *binary_cols]
         self.label_col = label_col
         self.problem_type = problem_type
-        self.hyperparameter_space = hyperparameter_space
-        self.hyperopt_max_evals = hyperopt_max_evals
-        self.hyperopt_iteration_stop_count = hyperopt_iteration_stop_count
-        self.hyperopt_early_stopping_threshold = hyperopt_early_stopping_threshold
-        self.mlflow_experiment_location = mlflow_experiment_location
-        self.mlflow_run_description = mlflow_run_description
         self.random_state = random_state
         self.train_eval_shuffle = train_eval_shuffle
         self.commit_hash = commit_hash
@@ -220,6 +164,50 @@ class SkLearnHyperoptBase(SkLearnPipelineABC, ABC):
             [("preprocessing_pipeline", preprocessing_pipeline), ("model", model)]
         )
         return classification_pipeline
+
+
+class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
+    """
+    This class it intended to be inherited by child classes. It implements a standard workflow to train
+    a scikit-learn model with parameter tuning via Hyperopt and MLflow logging. It performs the following steps:
+        - Searches through a provided hyperparameter space using Hyperopt and returns the best hyperparameters
+          for a model.
+        - Trains a final model with the best hyperparameters.
+        - Logs the trained model as well as training and evaluation fit statistics to an MLflow experiment run.
+
+    Arguments:
+        hyerparameter_space: A dictionary contain the parameter names and hyperopt ranges that define the parameter search space.
+
+        hyperopt_max_evals: The maximum number of hyperopt experiment runs allowed.
+
+        hyperopt_iteration_stop_count: Use for early stopping; the maximum experiment allowed before improvement in the validation criteria (the loss
+                                       returned by the hyperopt objective function).
+
+        hyperopt_early_stopping_threshold: The percentage increase in the hyperopt loss metric that must occure to precent early stopping.
+
+        mlflow_experiment_location: The directory of the MLflow experiment.
+
+        mlflow_run_description: A text description to log to an MLflow run.
+    """
+
+    def __init__(
+        self,
+        *,
+        hyperparameter_space: Dict[str, Any],
+        hyperopt_max_evals: int,
+        hyperopt_iteration_stop_count: int,
+        hyperopt_early_stopping_threshold: float,
+        mlflow_experiment_location: str,
+        mlflow_run_description: str,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.hyperparameter_space = hyperparameter_space
+        self.hyperopt_max_evals = hyperopt_max_evals
+        self.hyperopt_iteration_stop_count = hyperopt_iteration_stop_count
+        self.hyperopt_early_stopping_threshold = hyperopt_early_stopping_threshold
+        self.mlflow_experiment_location = mlflow_experiment_location
+        self.mlflow_run_description = mlflow_run_description
 
     def format_hyperopt_for_sklearn(
         self, hyperopt_params: Dict[str, Union[str, int, float]]

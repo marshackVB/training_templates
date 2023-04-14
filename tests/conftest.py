@@ -42,8 +42,7 @@ def spark() -> SparkSession:
 
 
 @pytest.fixture(scope="session")
-def feature_table():
-    spark = SparkSession.builder.getOrCreate()
+def feature_table(spark):
 
     df = sample_spark_dataframe()
 
@@ -57,7 +56,7 @@ def feature_table():
         allow_overwrite=True,
     )
 
-    yield "default.feature_table"
+    return "default.feature_table"
 
 
 @pytest.fixture

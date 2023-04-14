@@ -30,7 +30,7 @@
 
 from hyperopt import hp
 
-from training_templates import SkLearnHyperoptBase, XGBoostHyperoptTrainer, RandomForestHyperoptTrainer
+from training_templates import XGBoostHyperoptTrainer, RandomForestHyperoptTrainer
 from training_templates.data_utils import sample_spark_dataframe, train_test_split
 from training_templates.utils import get_or_create_experiment
 

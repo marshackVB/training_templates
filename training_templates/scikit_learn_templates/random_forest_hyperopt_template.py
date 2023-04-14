@@ -12,8 +12,10 @@ class RandomForestHyperoptTrainer(SkLearnHyperoptBase):
     Implements a Hyperopt objective function for a Random Forest training workflow.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(RandomForestClassifier, "random_forest", *args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(
+            model=RandomForestClassifier, model_name="random_forest", **kwargs
+        )
 
     def config_hyperopt_objective_fn(self, X_train_transformed, X_val_transformed):
         """

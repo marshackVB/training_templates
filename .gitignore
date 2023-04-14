@@ -17,6 +17,7 @@ htmlcov/*
 
 # Caches
 .pytest_cache/
+.mypy_cache/
 
 # VSCode
 .vscode/
