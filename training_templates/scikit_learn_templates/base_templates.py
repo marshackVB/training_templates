@@ -57,7 +57,7 @@ class SkLearnPipelineABC(ABC):
         """
 
 
-class SkLearnHyperoptBase(SkLearnPipelineABC):
+class SkLearnHyperoptBase(SkLearnPipelineABC, ABC):
     """
     This class it intended to be inherited by child classes. It implements a standard workflow to train
     a scikit-learn model along with MLflow logging. It performs the following steps:
@@ -235,15 +235,13 @@ class SkLearnHyperoptBase(SkLearnPipelineABC):
                 hyperopt_params[param] = int(hyperopt_params[param])
         return hyperopt_params
 
+    @abstractmethod
     def config_hyperopt_objective_fn(
         self, X_train_transformed: pd.DataFrame, X_val_transformed: pd.DataFrame
     ) -> Callable:
         """
         Return a Hyperopt object function for the type of model to be trained
         """
-        raise NotImplementedError(
-            "You must override this method with a Hyperopt ojective function for your model"
-        )
 
     def transform_features_for_hyperopt(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
