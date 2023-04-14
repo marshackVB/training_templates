@@ -1,4 +1,4 @@
 scikit-learn>=1.0
-pandas>=1.0
+pandas>=1.0, <2.0
 mlflow-skinny>=2.0
 xgboost>=1.0
