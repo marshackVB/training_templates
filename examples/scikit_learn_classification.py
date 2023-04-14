@@ -18,7 +18,7 @@
 # building the package. Module functions and classes can be edited in VSCode and synced to the Repo
 # in real time. Then, Notebook cell runs will capture the updates due to the use of %autoreload magic 
 # functions, without the need to detach and reatach the Notebook to the Cluster.
-pip install -r ../requirements.txt -q
+%pip install -r ../requirements.txt -q
 
 # COMMAND ----------
 
