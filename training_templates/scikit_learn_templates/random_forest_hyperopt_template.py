@@ -13,7 +13,9 @@ class RandomForestHyperoptTrainer(SkLearnHyperoptBase):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(model=RandomForestClassifier, model_name="random_forest", **kwargs)
+        super().__init__(
+            model=RandomForestClassifier, model_name="random_forest", **kwargs
+        )
 
     def config_hyperopt_objective_fn(self, X_train_transformed, X_val_transformed):
         """

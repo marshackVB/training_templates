@@ -15,9 +15,10 @@ from sklearn.preprocessing import OneHotEncoder
 
 from training_templates.utils import get_commit_info
 
+
 class SkLearnPipelineBase(ABC):
     """
-    This class is intended to be inherited by child classes. It implements a typical sci-kit learn data processing workflow that can 
+    This class is intended to be inherited by child classes. It implements a typical sci-kit learn data processing workflow that can
     be integrated into model training classes. It performs the following steps:
         - Splits features into training/evaluation datasets.
         - Creates a data processing and and model training scikit-learn Pipeline.
@@ -47,6 +48,7 @@ class SkLearnPipelineBase(ABC):
 
         release_version: The release version of othe code training the model; this is intended to be assigned programatically.
     """
+
     @abstractmethod
     def __init__(
         self,
@@ -65,7 +67,7 @@ class SkLearnPipelineBase(ABC):
         train_eval_shuffle: bool = True,
         commit_hash: str = "",
         release_version: str = "",
-):
+    ):
         self.model = model
         self.model_name = model_name
         self.delta_feature_table = delta_feature_table
@@ -162,7 +164,7 @@ class SkLearnPipelineBase(ABC):
             [("preprocessing_pipeline", preprocessing_pipeline), ("model", model)]
         )
         return classification_pipeline
-    
+
 
 class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
     """
@@ -187,8 +189,9 @@ class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
 
         mlflow_run_description: A text description to log to an MLflow run.
     """
+
     def __init__(
-        self, 
+        self,
         *,
         hyperparameter_space: Dict[str, Any],
         hyperopt_max_evals: int,
@@ -196,8 +199,8 @@ class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
         hyperopt_early_stopping_threshold: float,
         mlflow_experiment_location: str,
         mlflow_run_description: str,
-        **kwargs
-        ):
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.hyperparameter_space = hyperparameter_space
         self.hyperopt_max_evals = hyperopt_max_evals
@@ -354,10 +357,3 @@ class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
             print(
                 f"Training complete - run id: {self.run_id}, experiment: {self.mlflow_experiment_location}"
             )
-        
-
-
-
-
-
-
