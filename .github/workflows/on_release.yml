@@ -1,3 +1,4 @@
+name: Build and deploy package
 on:
   release:
     types: [released]
