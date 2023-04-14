@@ -16,13 +16,14 @@ class XGBoostHyperoptTrainer(SkLearnHyperoptBase):
     Implements a Hyperopt objective function for an XGBoost training workflow.
     """
 
+    convert_to_int = ["n_estimators", "max_depth", "max_leaves", "max_bin", "grow_policy"]
+
     def __init__(self, *args, **kwargs):
-        self.convert_to_int = ["max_depth"]
         super().__init__(xgb.XGBClassifier, "xgboost", *args, **kwargs)
 
     def format_hyperopt_for_sklearn(self, hyperopt_params):
         for param, value in hyperopt_params.items():
-            if param in self.convert_to_int:
+            if param in self.__class__.convert_to_int:
                 hyperopt_params[param] = int(value)
 
         return hyperopt_params
