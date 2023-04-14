@@ -18,9 +18,11 @@ def trainer(spark, feature_table, training_args):
     }
 
     training_args["hyperparameter_space"] = hyperparameter_space
+    training_args["delta_feature_table"] = feature_table
+    training_args["delta_train_val_id_table"] = f"{feature_table}_train"
 
     trainer = XGBoostHyperoptTrainer(
-        feature_table, f"{feature_table}_train", **training_args
+        **training_args
     )
     return trainer
 
