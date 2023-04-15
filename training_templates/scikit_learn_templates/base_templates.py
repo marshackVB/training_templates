@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Union, Tuple
+from typing import Any, Callable, Dict, Union, Tuple
 
 import mlflow
 import numpy as np
@@ -99,7 +99,9 @@ class SkLearnPipelineBase(ABC):
         """
         Split a Pandas DataFrame of features into training and validation datasets
         """
-        non_label_cols = [col for col in self.feature_df.columns if col != self.label_col]
+        non_label_cols = [
+            col for col in self.feature_df.columns if col != self.label_col
+        ]
         self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(
             self.feature_df[non_label_cols],
             self.feature_df[self.label_col],
@@ -157,15 +159,15 @@ class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
     """
 
     logging_attributes_to_exclude = [
-                "feature_df",
-                "preprocessing_pipeline",
-                "model",
-                "X_train",
-                "X_val",
-                "y_train",
-                "y_val",
-                "hyperparameter_space",
-            ]
+        "feature_df",
+        "preprocessing_pipeline",
+        "model",
+        "X_train",
+        "X_val",
+        "y_train",
+        "y_val",
+        "hyperparameter_space",
+    ]
 
     def __init__(
         self,
