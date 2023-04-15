@@ -8,10 +8,8 @@ from hyperopt import Trials, fmin, tpe, space_eval
 from hyperopt.early_stop import no_progress_loss
 from pyspark.sql import SparkSession
 from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline, make_pipeline
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
 
 from training_templates.utils import get_commit_info
 
@@ -55,14 +53,12 @@ class SkLearnPipelineBase(ABC):
         *,
         model: Callable,
         model_name: str,
+        problem_type: str,
+        preprocessing_pipeline: ColumnTransformer,
         delta_feature_table: str,
         delta_train_val_id_table: str,
         train_size: float,
-        numerical_cols: List[str],
-        categorical_cols: List[str],
-        binary_cols: List[str],
         label_col: str,
-        problem_type: str,
         random_state: int = 123,
         train_eval_shuffle: bool = True,
         commit_hash: str = "",
@@ -70,16 +66,13 @@ class SkLearnPipelineBase(ABC):
     ):
         self.model = model
         self.model_name = model_name
+        self.problem_type = problem_type
+        self.preprocessing_pipeline = preprocessing_pipeline
         self.delta_feature_table = delta_feature_table
         self.delta_train_val_id_table = delta_train_val_id_table
         self.feature_df = self._join_train_val_features()
         self.train_size = train_size
-        self.numerical_cols = numerical_cols
-        self.categorical_cols = categorical_cols
-        self.binary_cols = binary_cols
-        self.all_feature_cols = [*numerical_cols, *categorical_cols, *binary_cols]
         self.label_col = label_col
-        self.problem_type = problem_type
         self.random_state = random_state
         self.train_eval_shuffle = train_eval_shuffle
         self.commit_hash = commit_hash
@@ -106,40 +99,14 @@ class SkLearnPipelineBase(ABC):
         """
         Split a Pandas DataFrame of features into training and validation datasets
         """
+        non_label_cols = [col for col in self.feature_df.columns if col != self.label_col]
         self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(
-            self.feature_df[self.all_feature_cols],
+            self.feature_df[non_label_cols],
             self.feature_df[self.label_col],
             train_size=self.train_size,
             random_state=self.random_state,
             shuffle=self.train_eval_shuffle,
         )
-
-    def init_preprocessing_pipeline(self) -> ColumnTransformer:
-        """
-        Configure and return a scikit-learn ColunTransformer to handle all data preprocessing and
-        encoding.
-        """
-        binary_transform = make_pipeline(
-            SimpleImputer(strategy="constant", fill_value="missing")
-        )
-        numeric_transform = make_pipeline(SimpleImputer(strategy="most_frequent"))
-        categorical_transform = make_pipeline(
-            SimpleImputer(
-                missing_values=None, strategy="constant", fill_value="missing"
-            ),
-            OneHotEncoder(handle_unknown="ignore"),
-        )
-
-        preprocessing_pipeline = ColumnTransformer(
-            [
-                ("categorical_cols", categorical_transform, self.categorical_cols),
-                ("numerical_cols", numeric_transform, self.numerical_cols),
-                ("binary_cols", binary_transform, self.binary_cols),
-            ],
-            remainder="drop",
-        )
-
-        return preprocessing_pipeline
 
     def init_model(
         self, model_params: Union[Dict[str, Union[str, int, float]], None] = None
@@ -158,10 +125,9 @@ class SkLearnPipelineBase(ABC):
         Combines the proprocessing pipeline and the model
         into a scikit-learn Pipeline and returns the pipeline
         """
-        preprocessing_pipeline = self.init_preprocessing_pipeline()
         model = self.init_model(model_params)
         classification_pipeline = Pipeline(
-            [("preprocessing_pipeline", preprocessing_pipeline), ("model", model)]
+            [("preprocessing_pipeline", self.preprocessing_pipeline), ("model", model)]
         )
         return classification_pipeline
 
@@ -189,6 +155,17 @@ class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
 
         mlflow_run_description: A text description to log to an MLflow run.
     """
+
+    logging_attributes_to_exclude = [
+                "feature_df",
+                "preprocessing_pipeline",
+                "model",
+                "X_train",
+                "X_val",
+                "y_train",
+                "y_val",
+                "hyperparameter_space",
+            ]
 
     def __init__(
         self,
@@ -237,9 +214,8 @@ class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
         to the Hyperopt objective function to eliminated repeated feature calculations
         during each experiment.
         """
-        preprocessing_pipeline = self.init_preprocessing_pipeline()
-        X_train_transformed = preprocessing_pipeline.fit_transform(self.X_train)
-        X_val_transformed = preprocessing_pipeline.transform(self.X_val)
+        X_train_transformed = self.preprocessing_pipeline.fit_transform(self.X_train)
+        X_val_transformed = self.preprocessing_pipeline.transform(self.X_val)
 
         return (X_train_transformed, X_val_transformed)
 
@@ -338,18 +314,8 @@ class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
 
             # Log instance attributes as json file
             logging_attributes = {}
-            logging_attributes_to_exclude = [
-                "feature_df",
-                "model",
-                "X_train",
-                "X_val",
-                "y_train",
-                "y_val",
-                "hyperparameter_space",
-            ]
-
             for attribute, value in self.__dict__.items():
-                if attribute not in logging_attributes_to_exclude:
+                if attribute not in self.__class__.logging_attributes_to_exclude:
                     logging_attributes[attribute] = value
 
             mlflow.log_dict(logging_attributes, "class_instance_attributes.json")

@@ -29,6 +29,10 @@
 # COMMAND ----------
 
 from hyperopt import hp
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder
 
 from training_templates import XGBoostHyperoptTrainer, RandomForestHyperoptTrainer
 from training_templates.data_utils import sample_spark_dataframe, train_test_split
@@ -56,7 +60,7 @@ display(spark.table(raw_features_table))
 train_table_name, test_table_name = train_test_split(feature_table_name=raw_features_table,
                                                      unique_id='PassengerId',
                                                      train_val_size=0.85,
-                                                     allow_overwrite=False)
+                                                     allow_overwrite=True)
 
 # COMMAND ----------
 
@@ -79,22 +83,44 @@ print(f"Training/validation records: {train_record_cnt}; Test records: {test_rec
 
 # COMMAND ----------
 
-# MAGIC %md #### Configure models
+# MAGIC %md #### Configure feature preprocessing
+
+# COMMAND ----------
+
+categorical_cols = ['NamePrefix', 'Sex', 'CabinChar', 'CabinMulti', 'Embarked', 'Parch', 'Pclass', 'SibSp']
+numerical_cols = ['Age', 'FareRounded']
+binary_cols = ['NameMultiple']
+
+numeric_transform = make_pipeline(SimpleImputer(strategy="most_frequent"))
+
+categorical_transform = make_pipeline(
+    SimpleImputer(
+        missing_values=None, strategy="constant", fill_value="missing"
+    ),
+    OneHotEncoder(handle_unknown="ignore"),
+)
+
+preprocessing_pipeline = ColumnTransformer(
+    [
+        ("categorical_cols", categorical_transform, categorical_cols),
+        ("numerical_cols", numeric_transform, numerical_cols),
+        ("binary_cols", 'passthrough', binary_cols),
+    ],
+    remainder="drop",)
+
+# COMMAND ----------
+
+# MAGIC %md #### Configure training
 
 # COMMAND ----------
 
 raw_features_table = 'default.mlc_raw_features'
 label_col = 'Survived'
-categorical_cols = ['NamePrefix', 'Sex', 'CabinChar', 'CabinMulti', 'Embarked', 'Parch', 'Pclass', 'SibSp']
-numerical_cols = ['Age', 'FareRounded']
-binary_cols = ['NameMultiple']
 
 model_params = {"delta_feature_table": raw_features_table, 
                 "delta_train_val_id_table": f"{raw_features_table}_train", 
                 "train_size": 0.8, 
-                "numerical_cols": numerical_cols, 
-                "categorical_cols": categorical_cols, 
-                "binary_cols": binary_cols, 
+                "preprocessing_pipeline": preprocessing_pipeline,
                 "label_col": label_col, 
                 "problem_type": "classification", 
                 "hyperopt_max_evals": 500,
