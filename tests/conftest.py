@@ -3,10 +3,14 @@ import shutil
 import tempfile
 from pathlib import Path
 
+from delta import configure_spark_with_delta_pip
 import mlflow
 import pytest
-from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder
 
 from training_templates.data_utils import train_test_split, sample_spark_dataframe
 
@@ -61,20 +65,31 @@ def feature_table(spark):
 
 @pytest.fixture
 def training_args():
+
+    categorical_cols = ['NamePrefix', 'Sex', 'CabinChar', 'CabinMulti', 'Embarked', 'Parch', 'Pclass', 'SibSp']
+    numerical_cols = ['Age', 'FareRounded']
+    binary_cols = ['NameMultiple']
+
+    numeric_transform = make_pipeline(SimpleImputer(strategy="most_frequent"))
+
+    categorical_transform = make_pipeline(
+        SimpleImputer(
+            missing_values=None, strategy="constant", fill_value="missing"
+        ),
+        OneHotEncoder(handle_unknown="ignore"),
+    )
+
+    preprocessing_pipeline = ColumnTransformer(
+        [
+            ("categorical_cols", categorical_transform, categorical_cols),
+            ("numerical_cols", numeric_transform, numerical_cols),
+            ("binary_cols", 'passthrough', binary_cols),
+        ],
+        remainder="drop",)
+
     args = {
         "train_size": 0.9,
-        "numerical_cols": ["Age", "FareRounded"],
-        "categorical_cols": [
-            "NamePrefix",
-            "Sex",
-            "CabinChar",
-            "CabinMulti",
-            "Embarked",
-            "Parch",
-            "Pclass",
-            "SibSp",
-        ],
-        "binary_cols": ["NameMultiple"],
+        "preprocessing_pipeline": preprocessing_pipeline,
         "label_col": "Survived",
         "problem_type": "classification",
         "hyperopt_max_evals": 20,

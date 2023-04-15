@@ -114,14 +114,6 @@ def test_fit_predict_model_pipeline(trainer):
     assert isinstance(model_pipeline["model"], RandomForestClassifier)
     assert isinstance(model_pipeline, Pipeline)
 
-    # Numerical, categorical, and binary columns are all passed to ColumnTransformer
-    column_transformations = {}
-    for transformer in model_pipeline["preprocessing_pipeline"].transformers:
-        column_transformations[transformer[0]] = transformer[2]
-
-    for column_type, list_of_columns in column_transformations.items():
-        assert list_of_columns == trainer.__dict__[column_type]
-
     model_pipeline.fit(trainer.X_train, trainer.y_train)
     predictions = model_pipeline.predict_proba(trainer.X_val)
     observations = trainer.X_val.shape[0]
@@ -167,6 +159,7 @@ def test_hyperopt_objective_fn(trainer):
     model_params = {"n_estimators": 10}
     objective_results = objective_fn(model_params)
 
+    assert isinstance(objective_results, dict)
     assert objective_results["status"] == "ok"
     assert type(objective_results["loss"]) == np.float64
     assert isinstance(objective_results["metrics"], OrderedDict)
