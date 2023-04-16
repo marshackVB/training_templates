@@ -68,6 +68,25 @@ def train_test_split(
     return (train_output_table_name, test_output_table_name)
 
 
+
+def join_train_val_features(delta_feature_table: str, delta_train_val_id_table: str) -> pd.DataFrame:
+    """
+    Join the feature table to the ids associated with the training and evaluation observations.
+    Remaining observations in the feature table are set aside as a test dataset.
+    """
+    spark = SparkSession.builder.getOrCreate()
+
+    features = spark.table(delta_feature_table)
+    train_val_ids = spark.table(delta_train_val_id_table)
+    train_val_ids_primary_key = train_val_ids.columns[0]
+
+    train_val_features = features.join(
+        train_val_ids, [train_val_ids_primary_key], "inner"
+    )
+
+    return train_val_features.toPandas()
+
+
 def sample_pandas_dataframe():
     dtype = {
         "PassengerId": "object",

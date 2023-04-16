@@ -33,8 +33,11 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestClassifier
+import xgboost as xgb
 
-from training_templates import XGBoostHyperoptTrainer, RandomForestHyperoptTrainer
+from training_templates.tuners.hyperopt import XGBoostHyperoptTuner, SkLearnHyperoptTuner
+from training_templates import SkLearnHyperoptTrainer
 from training_templates.data_utils import sample_spark_dataframe, train_test_split
 from training_templates.utils import get_or_create_experiment
 
@@ -110,6 +113,36 @@ preprocessing_pipeline = ColumnTransformer(
 
 # COMMAND ----------
 
+# MAGIC %md #### Configure tuner
+
+# COMMAND ----------
+
+hyperparameter_space = {'max_depth': hp.quniform('max_depth', 1, 10, 1),
+                        'eval_metric': 'auc',
+                        'early_stopping_rounds': 50}
+
+tuner_args = {"hyperparameter_space": hyperparameter_space,
+              "hyperopt_max_evals": 20 ,
+              "hyperopt_iteration_stop_count": 5,
+              "hyperopt_early_stopping_threshold": 0.05}
+
+tuner = XGBoostHyperoptTuner(**tuner_args)
+
+# COMMAND ----------
+
+hyperparameter_space = {"n_estimators": hp.quniform("n_estimators", 20, 1000, 1),
+                        "max_features": hp.uniform("max_features", 0.5, 1.0),
+                        "criterion": hp.choice("criterion", ["gini", "entropy"])}
+
+tuner_args = {"hyperparameter_space": hyperparameter_space,
+              "hyperopt_max_evals": 20 ,
+              "hyperopt_iteration_stop_count": 5,
+              "hyperopt_early_stopping_threshold": 0.05}
+
+tuner = SkLearnHyperoptTuner(**tuner_args)
+
+# COMMAND ----------
+
 # MAGIC %md #### Configure training
 
 # COMMAND ----------
@@ -117,16 +150,44 @@ preprocessing_pipeline = ColumnTransformer(
 raw_features_table = 'default.mlc_raw_features'
 label_col = 'Survived'
 
-model_params = {"delta_feature_table": raw_features_table, 
-                "delta_train_val_id_table": f"{raw_features_table}_train", 
-                "train_size": 0.8, 
-                "preprocessing_pipeline": preprocessing_pipeline,
-                "label_col": label_col, 
-                "problem_type": "classification", 
-                "hyperopt_max_evals": 500,
-                "hyperopt_iteration_stop_count": 50,
-                "hyperopt_early_stopping_threshold": 0.05,
-                "mlflow_experiment_location": "/Shared/ml_production_experiment"}
+description = "A test training run for the new and improved scikit-learn trainer"
+
+training_params = {"model": RandomForestClassifier,
+                   "model_name": "random_forecast",
+                   "model_type": "classifier",
+                   "delta_feature_table": raw_features_table, 
+                   "delta_train_val_id_table": f"{raw_features_table}_train", 
+                   "train_size": 0.8, 
+                   "preprocessing_pipeline": preprocessing_pipeline,
+                   "label_col": label_col,
+                   "tuner": tuner,
+                   "mlflow_experiment_location": "/Shared/ml_production_experiment",
+                   "mlflow_run_description": description}
+
+trainer = SkLearnHyperoptTrainer(**training_params)
+trainer.train()
+
+# COMMAND ----------
+
+raw_features_table = 'default.mlc_raw_features'
+label_col = 'Survived'
+
+description = "A test training run for the new and improved scikit-learn trainer"
+
+training_params = {"model": xgb.XGBClassifier,
+                   "model_name": "xgboost",
+                   "model_type": "classifier",
+                   "delta_feature_table": raw_features_table, 
+                   "delta_train_val_id_table": f"{raw_features_table}_train", 
+                   "train_size": 0.8, 
+                   "preprocessing_pipeline": preprocessing_pipeline,
+                   "label_col": label_col,
+                   "tuner": tuner,
+                   "mlflow_experiment_location": "/Shared/ml_production_experiment",
+                   "mlflow_run_description": description}
+
+trainer = SkLearnHyperoptBase(**training_params)
+trainer.train()
 
 # COMMAND ----------
 
