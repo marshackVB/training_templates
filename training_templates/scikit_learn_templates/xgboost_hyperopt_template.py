@@ -3,7 +3,6 @@ from collections import OrderedDict
 from hyperopt import STATUS_OK
 from hyperopt import Trials, fmin, tpe, space_eval
 from hyperopt.early_stop import no_progress_loss
-import mlflow
 import numpy as np
 from sklearn.metrics import precision_recall_fscore_support
 import xgboost as xgb
@@ -77,9 +76,6 @@ class XGBoostHyperoptTrainer(SkLearnHyperoptBase):
         """
         Launch the Hyperopt Trials workflow
         """
-
-        mlflow.autolog(disable=True)
-
         X_train_transformed, X_val_transformed = self.transform_features_for_hyperopt()
         object_fn = self.config_hyperopt_objective_fn(
             X_train_transformed, X_val_transformed

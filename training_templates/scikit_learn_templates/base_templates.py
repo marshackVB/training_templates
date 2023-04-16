@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
 from training_templates.utils import get_commit_info
+from training_templates.mlflow_utils import MLflowExperimentMixin, mlflow_hyperopt_experiment
 
 
 class SkLearnPipelineBase(ABC):
@@ -35,7 +36,7 @@ class SkLearnPipelineBase(ABC):
 
         label_col: The name of the label/target column.
 
-        problem_type: One of 'classification' or 'regression'. This is used by the mlflow.evaluate() method to calculated
+        model_type: One of 'classification' or 'regression'. This is used by the mlflow.evaluate() method to calculated
                       statistics on the evaluation dataset.
 
         random_state: And integer to used for initializing methods that perform operations such as train/test split.
@@ -46,14 +47,12 @@ class SkLearnPipelineBase(ABC):
 
         release_version: The release version of othe code training the model; this is intended to be assigned programatically.
     """
-
-    @abstractmethod
     def __init__(
         self,
         *,
         model: Callable,
         model_name: str,
-        problem_type: str,
+        model_type: str,
         preprocessing_pipeline: ColumnTransformer,
         delta_feature_table: str,
         delta_train_val_id_table: str,
@@ -66,7 +65,7 @@ class SkLearnPipelineBase(ABC):
     ):
         self.model = model
         self.model_name = model_name
-        self.problem_type = problem_type
+        self.model_type = model_type
         self.preprocessing_pipeline = preprocessing_pipeline
         self.delta_feature_table = delta_feature_table
         self.delta_train_val_id_table = delta_train_val_id_table
@@ -132,9 +131,15 @@ class SkLearnPipelineBase(ABC):
             [("preprocessing_pipeline", self.preprocessing_pipeline), ("model", model)]
         )
         return classification_pipeline
+    
+    @abstractmethod
+    def train(self):
+        """
+        The model training code.
+        """
 
 
-class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
+class SkLearnHyperoptBase(SkLearnPipelineBase, MLflowExperimentMixin, ABC):
     """
     This class it intended to be inherited by child classes. It implements a standard workflow to train
     a scikit-learn model with parameter tuning via Hyperopt and MLflow logging. It performs the following steps:
@@ -161,6 +166,7 @@ class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
     logging_attributes_to_exclude = [
         "feature_df",
         "preprocessing_pipeline",
+        "model_pipeline",
         "model",
         "X_train",
         "X_val",
@@ -225,9 +231,6 @@ class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
         """
         Launch the Hyperopt Trials workflow
         """
-
-        mlflow.autolog(disable=True)
-
         X_train_transformed, X_val_transformed = self.transform_features_for_hyperopt()
         object_fn = self.config_hyperopt_objective_fn(
             X_train_transformed, X_val_transformed
@@ -265,6 +268,7 @@ class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
 
         return final_model_parameters
 
+    @mlflow_hyperopt_experiment
     def train(self) -> None:
         """
         Execute the full training workflow.
@@ -278,50 +282,18 @@ class SkLearnHyperoptBase(SkLearnPipelineBase, ABC):
         self.train_test_split()
 
         print("Searching hyperparameter space")
+        mlflow.autolog(disable=True)
         self.model_params = self.tune_hyperparameters()
 
-        mlflow.set_experiment(self.mlflow_experiment_location)
-        tags = {"class_name": self.__class__.__name__}
-        with mlflow.start_run(
-            run_name=self.model_name, tags=tags, description=self.mlflow_run_description
-        ) as run:
-            self.run_id = run.info.run_id
-
-            mlflow.autolog(
+        mlflow.autolog(
                 log_input_examples=True,
                 log_model_signatures=True,
                 log_models=True,
-                silent=True,
+                silent=False,
             )
 
-            print("\nTraining model with best hyperparameters")
-            model_training_pipeline = self.init_model_pipeline(self.model_params)
-            model_training_pipeline.fit(self.X_train, self.y_train)
+        print("\nTraining model with best hyperparameters")
+        self.model_pipeline = self.init_model_pipeline(self.model_params)
+        self.model_pipeline.fit(self.X_train, self.y_train)
 
-            if self.commit_hash:
-                tags = get_commit_info(self.commit_hash, self.release_version)
-                mlflow.set_tags(tags)
 
-            logged_model = f"runs:/{self.run_id}/model"
-
-            eval_features_and_labels = pd.concat([self.X_val, self.y_val], axis=1)
-
-            print("Scoring validation dataset; logging metrics and artifacts")
-            mlflow.evaluate(
-                logged_model,
-                data=eval_features_and_labels,
-                targets=self.label_col,
-                model_type="classifier",
-            )
-
-            # Log instance attributes as json file
-            logging_attributes = {}
-            for attribute, value in self.__dict__.items():
-                if attribute not in self.__class__.logging_attributes_to_exclude:
-                    logging_attributes[attribute] = value
-
-            mlflow.log_dict(logging_attributes, "class_instance_attributes.json")
-
-            print(
-                f"Training complete - run id: {self.run_id}, experiment: {self.mlflow_experiment_location}"
-            )

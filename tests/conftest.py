@@ -91,7 +91,7 @@ def training_args():
         "train_size": 0.9,
         "preprocessing_pipeline": preprocessing_pipeline,
         "label_col": "Survived",
-        "problem_type": "classification",
+        "model_type": "classifier",
         "hyperopt_max_evals": 20,
         "hyperopt_iteration_stop_count": 5,
         "hyperopt_early_stopping_threshold": 0.05,
