@@ -2,7 +2,6 @@ import functools
 
 import mlflow
 import pandas as pd
-from pyspark.sql import SparkSession
 
 from training_templates.utils import get_commit_info
 
