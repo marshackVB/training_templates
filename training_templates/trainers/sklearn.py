@@ -1,13 +1,11 @@
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from typing import Any, Callable, Dict, Union
 
-import mlflow
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 
-from training_templates.trainers.utils import train_test_split_datasets
-from training_templates.mlflow_utils import mlflow_hyperopt_experiment
+from training_templates.data_utils import train_val_split
+from training_templates.mlflow import mlflow_hyperopt_experiment, MLflowExperimentMixin
 from training_templates.data_utils import join_train_val_features
 
 
@@ -45,7 +43,6 @@ class SkLearnPipelineBase(ABC):
         model_name: str,
         model_type: str,
         preprocessing_pipeline: ColumnTransformer,
-        train_size: float,
         label_col: str,
         random_state: int = 123,
         train_eval_shuffle: bool = True,
@@ -56,7 +53,6 @@ class SkLearnPipelineBase(ABC):
         self.model_name = model_name
         self.model_type = model_type
         self.preprocessing_pipeline = preprocessing_pipeline
-        self.train_size = train_size
         self.label_col = label_col
         self.random_state = random_state
         self.train_eval_shuffle = train_eval_shuffle
@@ -94,7 +90,7 @@ class SkLearnPipelineBase(ABC):
         """
 
 
-class SkLearnHyperoptTrainer(SkLearnPipelineBase):
+class SkLearnHyperoptTrainer(SkLearnPipelineBase, MLflowExperimentMixin):
     """
 
      Arguments:
@@ -103,26 +99,11 @@ class SkLearnHyperoptTrainer(SkLearnPipelineBase):
         delta_train_val_id_table: The namne of the Delta table that contains the column of observations primary keys
                                 that make up the training and evaluation datasets.
     """
-
-    logging_attributes_to_exclude = [
-        "feature_df",
-        "preprocessing_pipeline",
-        "model_pipeline",
-        "model",
-        "X_train",
-        "X_val",
-        "y_train",
-        "y_val",
-        "X_train_transformed",
-        "X_val_transformed"
-        "hyperparameter_space",
-        "tuner",
-    ]
-
-    def __init__(self, *, delta_feature_table, delta_train_val_id_table, tuner, 
+    def __init__(self, *, delta_feature_table, delta_train_val_id_table, train_size: float, tuner, 
                  mlflow_experiment_location: str, mlflow_run_description: str, **kwargs,):
         self.delta_feature_table = delta_feature_table
         self.delta_train_val_id_table = delta_train_val_id_table
+        self.train_size = train_size
         self.feature_df = join_train_val_features(self.delta_feature_table, self.delta_train_val_id_table)
         self.tuner = tuner
         self.mlflow_experiment_location = mlflow_experiment_location
@@ -134,30 +115,22 @@ class SkLearnHyperoptTrainer(SkLearnPipelineBase):
     def train(self) -> None:
 
         print("Splitting features into training and validation datasets")
-        self.X_train, self.X_val, self.y_train, self.y_val = train_test_split_datasets(self.feature_df,
-                                                                                       self.label_col,
-                                                                                       self.train_size,
-                                                                                       self.train_eval_shuffle,
-                                                                                       self.random_state)
+        self.X_train, self.X_val, self.y_train, self.y_val = train_val_split(self.feature_df,
+                                                                             self.label_col,
+                                                                             self.train_size,
+                                                                             self.train_eval_shuffle,
+                                                                             self.random_state)
 
         print("Searching hyperparameter space")
         self.X_train_transformed = self.preprocessing_pipeline.fit_transform(self.X_train)
         self.X_val_transformed = self.preprocessing_pipeline.transform(self.X_val)
 
-        mlflow.autolog(disable=True)
-        self.model_params = self.tuner.tune_hyperparameters(self.init_model, 
-                                                      self.X_train_transformed, 
-                                                      self.X_val_transformed, 
-                                                      self.y_train, 
-                                                      self.y_val,
-                                                      self.random_state)
-
-        mlflow.autolog(
-                log_input_examples=True,
-                log_model_signatures=True,
-                log_models=True,
-                silent=True,
-            )
+        self.model_params = self.tuner.tune(self.init_model, 
+                                            self.X_train_transformed, 
+                                            self.X_val_transformed, 
+                                            self.y_train, 
+                                            self.y_val,
+                                            self.random_state)
 
         print("\nTraining model with best hyperparameters")
         self.model_pipeline = self.init_model_pipeline(self.model_params)

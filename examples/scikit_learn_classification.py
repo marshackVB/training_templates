@@ -38,8 +38,9 @@ import xgboost as xgb
 
 from training_templates.tuners.hyperopt import XGBoostHyperoptTuner, SkLearnHyperoptTuner
 from training_templates import SkLearnHyperoptTrainer
-from training_templates.data_utils import sample_spark_dataframe, train_test_split
-from training_templates.utils import get_or_create_experiment
+from training_templates.data_utils import sample_spark_dataframe, spark_train_test_split
+from training_templates.mlflow import get_or_create_experiment
+from training_templates.metrics import xgboost_classification_metrics, sklearn_classification_metrics
 
 # COMMAND ----------
 
@@ -60,10 +61,10 @@ display(spark.table(raw_features_table))
 
 # COMMAND ----------
 
-train_table_name, test_table_name = train_test_split(feature_table_name=raw_features_table,
-                                                     unique_id='PassengerId',
-                                                     train_val_size=0.85,
-                                                     allow_overwrite=True)
+train_table_name, test_table_name = spark_train_test_split(feature_table_name=raw_features_table,
+                                                           unique_id='PassengerId',
+                                                           train_val_size=0.85,
+                                                           allow_overwrite=True)
 
 # COMMAND ----------
 
@@ -113,20 +114,11 @@ preprocessing_pipeline = ColumnTransformer(
 
 # COMMAND ----------
 
-# MAGIC %md #### Configure tuner
+# MAGIC %md #### Random Forest training and logging
 
 # COMMAND ----------
 
-hyperparameter_space = {'max_depth': hp.quniform('max_depth', 1, 10, 1),
-                        'eval_metric': 'auc',
-                        'early_stopping_rounds': 50}
-
-tuner_args = {"hyperparameter_space": hyperparameter_space,
-              "hyperopt_max_evals": 20 ,
-              "hyperopt_iteration_stop_count": 5,
-              "hyperopt_early_stopping_threshold": 0.05}
-
-tuner = XGBoostHyperoptTuner(**tuner_args)
+# MAGIC %md Configure tuner
 
 # COMMAND ----------
 
@@ -143,14 +135,14 @@ tuner = SkLearnHyperoptTuner(**tuner_args)
 
 # COMMAND ----------
 
-# MAGIC %md #### Configure training
+# MAGIC %md Tune and train
 
 # COMMAND ----------
 
 raw_features_table = 'default.mlc_raw_features'
 label_col = 'Survived'
 
-description = "A test training run for the new and improved scikit-learn trainer"
+description = "An example Random Forest model trained with hyerpopt"
 
 training_params = {"model": RandomForestClassifier,
                    "model_name": "random_forecast",
@@ -169,13 +161,72 @@ trainer.train()
 
 # COMMAND ----------
 
+# MAGIC %md Log to trainer's Experiment run
+
+# COMMAND ----------
+
+tags = {"tuner": "hyperopt"}
+trainer.set_tags(tags)
+
+# COMMAND ----------
+
+# MAGIC %md Perform prediction from trainer
+
+# COMMAND ----------
+
+predictions = trainer.model_pipeline.predict(trainer.X_train)
+predictions[:10]
+
+# COMMAND ----------
+
+# MAGIC %md Generate and log custom metrics
+
+# COMMAND ----------
+
+custom_metrics = sklearn_classification_metrics(model = trainer.model_pipeline,
+                                                x = trainer.X_val,
+                                                y = trainer.y_val)
+
+custom_metrics
+
+# COMMAND ----------
+
+trainer.log_metrics(custom_metrics)
+
+# COMMAND ----------
+
+# MAGIC %md #### XGBoost training and logging
+
+# COMMAND ----------
+
+# MAGIC %md Confgure Tuner
+
+# COMMAND ----------
+
+hyperparameter_space = {'max_depth': hp.quniform('max_depth', 1, 10, 1),
+                        'eval_metric': 'auc',
+                        'early_stopping_rounds': 50}
+
+tuner_args = {"hyperparameter_space": hyperparameter_space,
+              "hyperopt_max_evals": 20 ,
+              "hyperopt_iteration_stop_count": 5,
+              "hyperopt_early_stopping_threshold": 0.05}
+
+tuner = XGBoostHyperoptTuner(**tuner_args)
+
+# COMMAND ----------
+
+# MAGIC %md Tune and train
+
+# COMMAND ----------
+
 raw_features_table = 'default.mlc_raw_features'
 label_col = 'Survived'
 
-description = "A test training run for the new and improved scikit-learn trainer"
+description = "An example Random Forest model trained with hyerpopt"
 
 training_params = {"model": xgb.XGBClassifier,
-                   "model_name": "xgboost",
+                   "model_name": "random_forecast",
                    "model_type": "classifier",
                    "delta_feature_table": raw_features_table, 
                    "delta_train_val_id_table": f"{raw_features_table}_train", 
@@ -186,43 +237,5 @@ training_params = {"model": xgb.XGBClassifier,
                    "mlflow_experiment_location": "/Shared/ml_production_experiment",
                    "mlflow_run_description": description}
 
-trainer = SkLearnHyperoptBase(**training_params)
+trainer = SkLearnHyperoptTrainer(**training_params)
 trainer.train()
-
-# COMMAND ----------
-
-# MAGIC %md ####Train an XGBoost model and log to MLflow
-
-# COMMAND ----------
-
-description = "A test training run for XGBoostHyperoptTrainer"
-
-hyperparameter_space = {'max_depth': hp.quniform('max_depth', 1, 10, 1),
-                        'eval_metric': 'auc',
-                        'early_stopping_rounds': 50}
-
-model_params["hyperparameter_space"] = hyperparameter_space
-model_params["mlflow_run_description"] = description
-
-model = XGBoostHyperoptTrainer(**model_params)
-
-model.train()
-
-# COMMAND ----------
-
-# MAGIC %md ####Train a Random Forest model and log to MLflow
-
-# COMMAND ----------
-
-description = "A test training run for RandomForestHyperoptTrainer"
-
-hyperparameter_space = {"n_estimators": hp.quniform("n_estimators", 20, 1000, 1),
-                        "max_features": hp.uniform("max_features", 0.5, 1.0),
-                        "criterion": hp.choice("criterion", ["gini", "entropy"])}
-
-model_params["hyperparameter_space"] = hyperparameter_space
-model_params["mlflow_run_description"] = description
-
-model = RandomForestHyperoptTrainer(**model_params)
-
-model.train()

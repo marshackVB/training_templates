@@ -1,34 +1,49 @@
 from abc import ABC, abstractmethod
-from collections import OrderedDict
+from typing import Dict, Union, Callable, Any
 
 from hyperopt import STATUS_OK
 from hyperopt import Trials, fmin, tpe, space_eval
 from hyperopt.early_stop import no_progress_loss
 import numpy as np
-from sklearn.metrics import precision_recall_fscore_support
-import xgboost as xgb
+import pandas as pd
 
 from training_templates.metrics import xgboost_classification_metrics, sklearn_classification_metrics
 from training_templates.tuners.formatters import format_hyperopt_sklearn, format_hyperopt_xbgoost
+from training_templates.mlflow import mlflow_disable_autolog
 
 
-
-class HyperoptTunerBase(ABC):
+class Tuner(ABC):
     @abstractmethod
-    def __init__(self, *, hyperparameter_space, hyperopt_max_evals, hyperopt_iteration_stop_count, 
-                 hyperopt_early_stopping_threshold):
+    def tune(self) -> Dict[str, Union[str, int, float]]:
+        """
+        Execute hyperparameter tuning strategy; return a dictionary containing the
+        best model parameters.
+        """
+
+
+class HyperoptTuner(Tuner, ABC):
+    def __init__(self, *, hyperparameter_space: Dict[str, Any], hyperopt_max_evals: int, hyperopt_iteration_stop_count: int, 
+                 hyperopt_early_stopping_threshold: float):
         
         self.hyperparameter_space = hyperparameter_space
-        self. hyperopt_max_evals = hyperopt_max_evals
+        self.hyperopt_max_evals = hyperopt_max_evals
         self.hyperopt_iteration_stop_count = hyperopt_iteration_stop_count
         self.hyperopt_early_stopping_threshold = hyperopt_early_stopping_threshold
 
+    @abstractmethod
+    def config_hyperopt_objective_fn(self, init_model: Callable, X_train_transformed: pd.DataFrame, 
+                                     X_val_transformed: pd.DataFrame, y_train: pd.Series, y_val: pd.Series) -> Callable:
+        """
+        Return a hyperopt object function
+        """
+        
 
-class XGBoostHyperoptTuner(HyperoptTunerBase):
+class XGBoostHyperoptTuner(HyperoptTuner):
     def __init__(self, **kwargs): 
         super().__init__(**kwargs)
 
-    def config_hyperopt_objective_fn(self, init_model, X_train_transformed, X_val_transformed, y_train, y_val):
+    def config_hyperopt_objective_fn(self, init_model, X_train_transformed, X_val_transformed,
+                                     y_train, y_val):
         """
         Return an Hyperopt objective function for an XGBoost model that leveraging early
         stopping
@@ -54,11 +69,12 @@ class XGBoostHyperoptTuner(HyperoptTunerBase):
         return hyperopt_objective_fn
     
 
-    def tune_hyperparameters(self, init_model, X_train_transformed, X_val_transformed, y_train, y_val, random_state):
-        """
-        Launch the Hyperopt Trials workflow
-        """
-        object_fn = self.config_hyperopt_objective_fn(init_model, X_train_transformed, X_val_transformed, y_train, y_val)
+    @mlflow_disable_autolog
+    def tune(self, init_model, X_train_transformed, X_val_transformed, 
+             y_train, y_val, random_state):
+    
+        object_fn = self.config_hyperopt_objective_fn(init_model, X_train_transformed, X_val_transformed, 
+                                                      y_train, y_val)
 
         trials = Trials()
 
@@ -100,14 +116,14 @@ class XGBoostHyperoptTuner(HyperoptTunerBase):
         return final_model_parameters
     
 
-class SkLearnHyperoptTuner(HyperoptTunerBase):
+class SkLearnHyperoptTuner(HyperoptTuner):
     def __init__(self, **kwargs): 
         super().__init__(**kwargs)
 
-    def config_hyperopt_objective_fn(self, init_model, X_train_transformed, X_val_transformed, y_train, y_val):
+    def config_hyperopt_objective_fn(self, init_model, X_train_transformed, X_val_transformed, 
+                                     y_train, y_val) ->Callable:
         """
-        Return an Hyperopt objective function for an XGBoost model that leveraging early
-        stopping
+        A standard tuner compatible with a wide variety of scikit-learn models
         """
 
         def hyperopt_objective_fn(params):
@@ -128,10 +144,10 @@ class SkLearnHyperoptTuner(HyperoptTunerBase):
         return hyperopt_objective_fn
     
 
-    def tune_hyperparameters(self, init_model, X_train_transformed, X_val_transformed, y_train, y_val, random_state):
-        """
-        Launch the Hyperopt Trials workflow
-        """
+    @mlflow_disable_autolog
+    def tune(self, init_model, X_train_transformed, X_val_transformed, 
+             y_train, y_val, random_state):
+ 
         object_fn = self.config_hyperopt_objective_fn(init_model, X_train_transformed, X_val_transformed, y_train, y_val)
 
         trials = Trials()
