@@ -123,12 +123,12 @@ class SkLearnHyperoptTuner(HyperoptTuner):
     def config_hyperopt_objective_fn(self, init_model, X_train_transformed, X_val_transformed, 
                                      y_train, y_val) ->Callable:
         """
-        A standard tuner compatible with a wide variety of scikit-learn models
+        A standard tuner compatible with a wide variety of scikit-learn
         """
 
         def hyperopt_objective_fn(params):
 
-            params = format_hyperopt_sklearn(params, init_model())
+            params = format_hyperopt_sklearn(params)
 
             model = init_model(params)
 
@@ -170,7 +170,8 @@ class SkLearnHyperoptTuner(HyperoptTuner):
         )
 
         best_params = space_eval(self.hyperparameter_space, best_params)
-        final_model_parameters = format_hyperopt_xbgoost(best_params)
+   
+        final_model_parameters = format_hyperopt_sklearn(best_params)
 
         print("Best model parameters:")
         for param, value in final_model_parameters.items():
