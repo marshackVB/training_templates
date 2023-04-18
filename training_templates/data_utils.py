@@ -71,7 +71,7 @@ def spark_train_test_split(
 
 
 def train_val_split(pandas_df: pd.DataFrame, label_col: str, train_size: float, 
-                    shuffle: int, random_state: int) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+                    shuffle: bool=True, random_state: int=123) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """
     Split a Pandas DataFrame of features into training and validation datasets
     """
