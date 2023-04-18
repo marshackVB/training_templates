@@ -36,7 +36,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 
-from training_templates.tuners.hyperopt import XGBoostHyperoptTuner, SkLearnHyperoptTuner
+from training_templates.tuners import XGBoostHyperoptTuner, SkLearnHyperoptTuner
 from training_templates import SkLearnHyperoptTrainer
 from training_templates.data_utils import sample_spark_dataframe, spark_train_test_split
 from training_templates.mlflow import get_or_create_experiment
@@ -127,8 +127,8 @@ hyperparameter_space = {"n_estimators": hp.quniform("n_estimators", 20, 1000, 1)
                         "criterion": hp.choice("criterion", ["gini", "entropy"])}
 
 tuner_args = {"hyperparameter_space": hyperparameter_space,
-              "hyperopt_max_evals": 20 ,
-              "hyperopt_iteration_stop_count": 5,
+              "hyperopt_max_evals": 200 ,
+              "hyperopt_iteration_stop_count": 20,
               "hyperopt_early_stopping_threshold": 0.05}
 
 tuner = SkLearnHyperoptTuner(**tuner_args)
@@ -208,8 +208,8 @@ hyperparameter_space = {'max_depth': hp.quniform('max_depth', 1, 10, 1),
                         'early_stopping_rounds': 50}
 
 tuner_args = {"hyperparameter_space": hyperparameter_space,
-              "hyperopt_max_evals": 20 ,
-              "hyperopt_iteration_stop_count": 5,
+              "hyperopt_max_evals": 200 ,
+              "hyperopt_iteration_stop_count": 20,
               "hyperopt_early_stopping_threshold": 0.05}
 
 tuner = XGBoostHyperoptTuner(**tuner_args)
