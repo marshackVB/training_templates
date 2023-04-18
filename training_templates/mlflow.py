@@ -47,13 +47,14 @@ def mlflow_disable_autolog(training_func):
     @functools.wraps(training_func)
     def wrapper(self, *args, **kwargs):
         mlflow.autolog(disable=True)
-        training_func(self, *args, **kwargs)
+        best_params = training_func(self, *args, **kwargs)
         mlflow.autolog(
                 log_input_examples=True,
                 log_model_signatures=True,
                 log_models=True,
                 silent=True,
             )
+        return best_params
     return wrapper
 
 
