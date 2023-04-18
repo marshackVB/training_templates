@@ -1,6 +1,7 @@
 import os
 from typing import Tuple
 
+import numpy as np
 import pandas as pd
 from pyspark.sql import SparkSession
 from pyspark.sql.types import (
@@ -70,15 +71,18 @@ def spark_train_test_split(
     return (train_output_table_name, test_output_table_name)
 
 
-def train_val_split(pandas_df: pd.DataFrame, label_col: str, train_size: float, 
-                    shuffle: bool=True, random_state: int=123) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+def train_val_split(
+    pandas_df: pd.DataFrame,
+    label_col: str,
+    train_size: float,
+    shuffle: bool = True,
+    random_state: int = 123,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """
     Split a Pandas DataFrame of features into training and validation datasets
     """
 
-    non_label_cols = [
-        col for col in pandas_df.columns if col != label_col
-    ]
+    non_label_cols = [col for col in pandas_df.columns if col != label_col]
     X_train, X_val, y_train, y_val = train_test_split(
         pandas_df[non_label_cols],
         pandas_df[label_col],
@@ -90,8 +94,9 @@ def train_val_split(pandas_df: pd.DataFrame, label_col: str, train_size: float,
     return (X_train, X_val, y_train, y_val)
 
 
-
-def join_train_val_features(delta_feature_table: str, delta_train_val_id_table: str) -> pd.DataFrame:
+def join_train_val_features(
+    delta_feature_table: str, delta_train_val_id_table: str
+) -> pd.DataFrame:
     """
     Join the feature table to the ids associated with the training and evaluation observations.
     Remaining observations in the feature table are set aside as a test dataset.
@@ -106,7 +111,10 @@ def join_train_val_features(delta_feature_table: str, delta_train_val_id_table: 
         train_val_ids, [train_val_ids_primary_key], "inner"
     )
 
-    return train_val_features.toPandas()
+    pandas_df = train_val_features.toPandas()
+    pandas_df = pandas_df.fillna(value=np.nan)  # type: ignore
+
+    return pandas_df
 
 
 def sample_pandas_dataframe():

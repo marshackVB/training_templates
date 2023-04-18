@@ -29,6 +29,7 @@
 # COMMAND ----------
 
 from hyperopt import hp
+from hyperopt.pyll.base import scope
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_pipeline
@@ -40,7 +41,7 @@ from training_templates.tuners import XGBoostHyperoptTuner, SkLearnHyperoptTuner
 from training_templates import SkLearnHyperoptTrainer
 from training_templates.data_utils import sample_spark_dataframe, spark_train_test_split
 from training_templates.mlflow import get_or_create_experiment
-from training_templates.metrics import xgboost_classification_metrics, sklearn_classification_metrics
+from training_templates.metrics import classification_metrics
 
 # COMMAND ----------
 
@@ -99,7 +100,7 @@ numeric_transform = make_pipeline(SimpleImputer(strategy="most_frequent"))
 
 categorical_transform = make_pipeline(
     SimpleImputer(
-        missing_values=None, strategy="constant", fill_value="missing"
+        strategy="constant", fill_value="missing" #missing_values=None, 
     ),
     OneHotEncoder(handle_unknown="ignore"),
 )
@@ -122,7 +123,7 @@ preprocessing_pipeline = ColumnTransformer(
 
 # COMMAND ----------
 
-hyperparameter_space = {"n_estimators": hp.quniform("n_estimators", 20, 1000, 1),
+hyperparameter_space = {"n_estimators": scope.int(hp.quniform("n_estimators", 20, 1000, 1)),
                         "max_features": hp.uniform("max_features", 0.5, 1.0),
                         "criterion": hp.choice("criterion", ["gini", "entropy"])}
 
@@ -183,9 +184,9 @@ predictions[:10]
 
 # COMMAND ----------
 
-custom_metrics = sklearn_classification_metrics(model = trainer.model_pipeline,
-                                                x = trainer.X_val,
-                                                y = trainer.y_val)
+custom_metrics = classification_metrics(model = trainer.model_pipeline,
+                                        x = trainer.X_val,
+                                        y = trainer.y_val)
 
 custom_metrics
 
@@ -203,7 +204,7 @@ trainer.log_metrics(custom_metrics)
 
 # COMMAND ----------
 
-hyperparameter_space = {'max_depth': hp.quniform('max_depth', 1, 10, 1),
+hyperparameter_space = {'max_depth': scope.int(hp.quniform('max_depth', 1, 10, 1)),
                         'eval_metric': 'auc',
                         'early_stopping_rounds': 50}
 

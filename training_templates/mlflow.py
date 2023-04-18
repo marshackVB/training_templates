@@ -19,10 +19,12 @@ def get_or_create_experiment(experiment_location: str) -> None:
     mlflow.set_experiment(experiment_location)
 
 
-def get_serializable_attributes(class_dict: Dict[str, Any]) -> Dict[str, Union[int, str, bool, float]]:
+def get_serializable_attributes(
+    class_dict: Dict[str, Any]
+) -> Dict[str, Union[int, str, bool, float]]:
     serializable_attributes = {}
     serializable_attribute_types = [int, str, bool, float]
-    for attribute_name, attribute_value  in class_dict.items():
+    for attribute_name, attribute_value in class_dict.items():
         if type(attribute_value) in serializable_attribute_types:
             serializable_attributes[attribute_name] = attribute_value
     return serializable_attributes
@@ -35,54 +37,59 @@ def get_commit_info(commit_sha, release_version):
 
 def mlflow_disable_autolog(training_func):
     """
-    A Decorater that initializes an MLflow context to log information 
-    to an exising Experiment. This function is designed to be applied 
-    to class methods and expect the following instance attributes to 
+    A Decorater that initializes an MLflow context to log information
+    to an exising Experiment. This function is designed to be applied
+    to class methods and expect the following instance attributes to
     exist.
 
     self.mlflow_experiment_location: (str) The MLflow Experiment location.
     self.run_id: (str) The run id of the experiment to access.
 
     """
+
     @functools.wraps(training_func)
     def wrapper(self, *args, **kwargs):
         mlflow.autolog(disable=True)
         best_params = training_func(self, *args, **kwargs)
         mlflow.autolog(
-                log_input_examples=True,
-                log_model_signatures=True,
-                log_models=True,
-                silent=True,
-            )
+            log_input_examples=True,
+            log_model_signatures=True,
+            log_models=True,
+            silent=True,
+        )
         return best_params
+
     return wrapper
 
 
 def mlflow_logger(logging_func):
     """
-    A Decorater that initializes an MLflow context to log information 
-    to an exising Experiment. This function is designed to be applied 
-    to class methods and expect the following instance attributes to 
+    A Decorater that initializes an MLflow context to log information
+    to an exising Experiment. This function is designed to be applied
+    to class methods and expect the following instance attributes to
     exist.
 
     self.mlflow_experiment_location: (str) The MLflow Experiment location.
     self.run_id: (str) The run id of the experiment to access.
 
     """
+
     @functools.wraps(logging_func)
     def wrapper(self, *args, **kwargs):
-      mlflow.set_experiment(self.mlflow_experiment_location)
-      with mlflow.start_run(run_id = self.run_id) as run:
-        logging_func(self, *args, **kwargs)
+        mlflow.set_experiment(self.mlflow_experiment_location)
+
+        with mlflow.start_run(run_id=self.run_id):
+            logging_func(self, *args, **kwargs)
+
     return wrapper
 
 
 def mlflow_hyperopt_experiment(training_func):
     """
-    This decorator performs MLflow Experiment initialization and model evaluation. It is 
+    This decorator performs MLflow Experiment initialization and model evaluation. It is
     designed to be applied to a class' train methods. Additional decorator functions can
     be created to implement different MLflow logging workflows.
-     
+
     The instance and class attributes listed below are expected to exist when this decorator
     is applied to an instance method
 
@@ -107,14 +114,16 @@ def mlflow_hyperopt_experiment(training_func):
             def train(self):
                 pass
     """
+
     @functools.wraps(training_func)
     def wrapper(self, *args, **kwargs):
-
         mlflow.set_experiment(self.mlflow_experiment_location)
 
         tags = {"class_name": self.__class__.__name__}
 
-        with mlflow.start_run(run_name=self.model_name, tags=tags, description=self.mlflow_run_description) as run:
+        with mlflow.start_run(
+            run_name=self.model_name, tags=tags, description=self.mlflow_run_description
+        ) as run:
             self.run_id = run.info.run_id
 
             training_func(self, *args, **kwargs)
@@ -128,13 +137,13 @@ def mlflow_hyperopt_experiment(training_func):
             eval_features_and_labels = pd.concat([self.X_val, self.y_val], axis=1)
 
             print("Scoring validation dataset; logging metrics and artifacts")
-     
+
             mlflow.evaluate(
-                        self.model_uri,
-                        data=eval_features_and_labels,
-                        targets=self.label_col,
-                        model_type=self.model_type,
-                    )
+                self.model_uri,
+                data=eval_features_and_labels,
+                targets=self.label_col,
+                model_type=self.model_type,
+            )
 
             attributes_to_log = get_serializable_attributes(self.__dict__)
             mlflow.log_dict(attributes_to_log, "class_instance_attributes.json")
@@ -142,7 +151,7 @@ def mlflow_hyperopt_experiment(training_func):
             print(
                 f"Training complete - run id: {self.run_id}, experiment: {self.mlflow_experiment_location}"
             )
-        
+
     return wrapper
 
 
@@ -153,8 +162,11 @@ class MLflowExperimentMixin:
     to easily log information to its latest Experiment run, without the need
     to pass any Experiment location or run information manually.
     """
+
     def _log_response(self, logging_type: str):
-        print(f"{logging_type} logged to run: {self.run_id}, experiment: {self.mlflow_experiment_location}")
+        print(
+            f"{logging_type} logged to run: {self.run_id}, experiment: {self.mlflow_experiment_location}"  # type: ignore
+        )
 
     @mlflow_logger
     def log_params(self, params):

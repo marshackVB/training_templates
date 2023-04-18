@@ -1,1 +1,4 @@
-from training_templates.trainers.sklearn import SkLearnPipelineBase, SkLearnHyperoptTrainer
+from training_templates.trainers.sklearn import (
+    SkLearnPipelineBase,
+    SkLearnHyperoptTrainer,
+)
