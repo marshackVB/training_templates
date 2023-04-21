@@ -5,7 +5,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 
-from training_templates.tuners  import XGBoostHyperoptTuner
+from training_templates.tuners  import XGBoostHyperoptTuner, Tuner
 from training_templates.data_utils import sample_pandas_dataframe, train_val_split
 
 
@@ -49,8 +49,9 @@ def objective_fn_args(transformed_features):
 
 def test_sklearn_hyperopt_tuner(objective_fn_args, default_tuner):
 
-    model = get_init_model_func(RandomForestClassifier)
-    objective_fn_args['init_model'] = model
+    model_init = get_init_model_func(RandomForestClassifier)
+    objective_fn_args['init_model'] = model_init
+
     best_params = default_tuner.tune(**objective_fn_args)
 
     assert isinstance(best_params, dict)
@@ -71,7 +72,9 @@ def test_xgboost_hyperopt_tuner(objective_fn_args, default_tuner_args):
     }
     default_tuner_args["hyperparameter_space"] = hyperparameter_space
 
-    tuner = XGBoostHyperoptTuner(**default_tuner_args)
+    model_name = "xgboost"
+    tuner = Tuner.load_tuner(model_name, default_tuner_args)
+    #tuner = XGBoostHyperoptTuner(**default_tuner_args)
     best_params = tuner.tune(**objective_fn_args)
 
     assert isinstance(best_params, dict)

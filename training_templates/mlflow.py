@@ -1,5 +1,5 @@
 import functools
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, Callable
 
 import mlflow
 import pandas as pd
@@ -10,7 +10,6 @@ def get_or_create_experiment(experiment_location: str) -> None:
     Given a DBFS directory, create an MLflow Experiment using that location if one
     does not already exist
     """
-
     if not mlflow.get_experiment_by_name(experiment_location):
         print("Experiment does not exist. Creating experiment")
 
@@ -22,8 +21,13 @@ def get_or_create_experiment(experiment_location: str) -> None:
 def get_serializable_attributes(
     class_dict: Dict[str, Any]
 ) -> Dict[str, Union[int, str, bool, float]]:
+    """
+    Filter out any class instance attributes that cannot be serized to JSON. Serializable
+    attributes are logged to an MLflow Experiment run.
+    """
     serializable_attributes = {}
     serializable_attribute_types = [int, str, bool, float]
+
     for attribute_name, attribute_value in class_dict.items():
         if type(attribute_value) in serializable_attribute_types:
             serializable_attributes[attribute_name] = attribute_value
@@ -31,6 +35,9 @@ def get_serializable_attributes(
 
 
 def get_commit_info(commit_sha, release_version):
+    """
+    Log commit_sha and github release version as tags
+    """
     tags = {"commit_sha": commit_sha, "release_version": release_version}
     return tags
 
@@ -44,7 +51,6 @@ def mlflow_disable_autolog(training_func):
 
     self.mlflow_experiment_location: (str) The MLflow Experiment location.
     self.run_id: (str) The run id of the experiment to access.
-
     """
 
     @functools.wraps(training_func)
@@ -71,7 +77,6 @@ def mlflow_logger(logging_func):
 
     self.mlflow_experiment_location: (str) The MLflow Experiment location.
     self.run_id: (str) The run id of the experiment to access.
-
     """
 
     @functools.wraps(logging_func)
@@ -84,7 +89,7 @@ def mlflow_logger(logging_func):
     return wrapper
 
 
-def mlflow_hyperopt_experiment(training_func):
+def mlflow_experiment(training_func: Callable) -> Callable:
     """
     This decorator performs MLflow Experiment initialization and model evaluation. It is
     designed to be applied to a class' train methods. Additional decorator functions can
@@ -106,7 +111,7 @@ def mlflow_hyperopt_experiment(training_func):
         and therefore cannot be logged as an MLflow artifact.
 
     Example:
-        class ModelTrainer(ParentTrainer):
+        class SkLearnHyperoptTrainer(...):
             def __init__(*args, **kwargs):
                 super().__init__(*args, **kwargs)
 
@@ -117,6 +122,10 @@ def mlflow_hyperopt_experiment(training_func):
 
     @functools.wraps(training_func)
     def wrapper(self, *args, **kwargs):
+        """
+        The main MLflow Experiment logging workflow used during model training. Sets the
+        Experiment location; starts the run context; uses autologging and auto evalution.
+        """
         mlflow.set_experiment(self.mlflow_experiment_location)
 
         tags = {"class_name": self.__class__.__name__}
@@ -143,6 +152,7 @@ def mlflow_hyperopt_experiment(training_func):
                 data=eval_features_and_labels,
                 targets=self.label_col,
                 model_type=self.model_type,
+                evaluator_config={"metric_prefix": "eval_"},
             )
 
             attributes_to_log = get_serializable_attributes(self.__dict__)
@@ -164,9 +174,7 @@ class MLflowExperimentMixin:
     """
 
     def _log_response(self, logging_type: str):
-        print(
-            f"{logging_type} logged to run: {self.run_id}, experiment: {self.mlflow_experiment_location}"  # type: ignore
-        )
+        print(f"{logging_type} logged to run: {self.run_id}, experiment: {self.mlflow_experiment_location}")  # type: ignore
 
     @mlflow_logger
     def log_params(self, params):
