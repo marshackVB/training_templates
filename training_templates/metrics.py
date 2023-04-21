@@ -2,7 +2,7 @@ from collections import OrderedDict
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
 
-from training_templates.constants import BOOSTED_MODELS
+from training_templates.config import BOOSTED_MODELS
 
 
 def classification_metrics_to_dict(

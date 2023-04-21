@@ -15,7 +15,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder
 
 from training_templates.data_utils import spark_train_test_split, sample_spark_dataframe
-from training_templates.tuners import SkLearnHyperoptTuner
+from training_templates.tuners import SkLearnHyperoptTuner, Tuner
 
 
 @pytest.fixture(scope="session")
@@ -165,7 +165,9 @@ def default_tuner(default_tuner_args):
     }
 
     default_tuner_args["hyperparameter_space"] = hyperparameter_space
-    return SkLearnHyperoptTuner(**default_tuner_args)
+    model_name = "random_forest"
+    tuner = Tuner.load_tuner(model_name, default_tuner_args)
+    return tuner
       
 
 

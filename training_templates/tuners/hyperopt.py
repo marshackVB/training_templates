@@ -10,10 +10,10 @@ import pandas as pd
 
 from training_templates.metrics import classification_metrics
 from training_templates.mlflow import mlflow_disable_autolog
-from training_templates.constants import BOOSTED_MODELS
+from training_templates.config import BOOSTED_MODELS
 
 
-class Tuner(ABC):
+class TunerABC(ABC):
     def __init__(
         self,
         *,
@@ -82,16 +82,16 @@ class Tuner(ABC):
 
         print("Best model parameters:")
         for param, value in best_params.items():
-            print(param, value)
+            print(f"{param}: {value}")
 
         print("\nBest model statistics:")
         for metric, value in trials.best_trial["result"]["metrics"].items():
-            print(metric, value)
+            print(f"{metric}: {value}")
 
         return best_params
 
 
-class XGBoostHyperoptTuner(Tuner):
+class XGBoostHyperoptTuner(TunerABC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -119,7 +119,7 @@ class XGBoostHyperoptTuner(Tuner):
         return hyperopt_objective_fn
 
 
-class SkLearnHyperoptTuner(Tuner):
+class SkLearnHyperoptTuner(TunerABC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -145,3 +145,33 @@ class SkLearnHyperoptTuner(Tuner):
             }
 
         return hyperopt_objective_fn
+
+
+def load_tuner_from_name(model_name):
+    model_tuner_dict = {
+        "random_forest": SkLearnHyperoptTuner,
+        "xgboost": XGBoostHyperoptTuner,
+    }
+
+    tuner = model_tuner_dict.get(model_name, None)
+
+    if not tuner:
+        raise Exception(f"Model name: '{model_name}' is not supported.")
+    else:
+        return tuner
+
+
+class Tuner:
+    """
+    Load the proper tuner given a model name
+    """
+
+    def __init__(self):
+        raise Exception(
+            "Tuner must be instantiated using the Tuner.load_tuner() method "
+        )
+
+    @classmethod
+    def load_tuner(cls, model_name, tuner_config):
+        tuner = load_tuner_from_name(model_name)
+        return tuner(**tuner_config)

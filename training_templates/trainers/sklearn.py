@@ -5,28 +5,27 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 
 from training_templates.data_utils import train_val_split
-from training_templates.mlflow import mlflow_hyperopt_experiment, MLflowExperimentMixin
+from training_templates.mlflow import mlflow_experiment, MLflowExperimentMixin
 from training_templates.data_utils import join_train_val_features
 
 
 class SkLearnPipelineBase(ABC):
     """
     This class is intended to be inherited by child classes. It implements a typical sci-kit learn data processing workflow that can
-    be integrated into model training classes. It performs the following steps:
-        - Creates a data processing and and model training scikit-learn Pipeline.
+    be integrated into model training classes.
 
     Arguments:
 
-        model:
+        model: A scikit-learn compatibale model.
 
-        model_name:
+        model_name: A string representation of the model name; used for MLflow Experiment logging.
+
+        model_type: One of 'classifier' or 'regressor'. This is used by the mlflow.evaluate() method to calculated
+                    statistics on the evaluation dataset.
+
+        preprocessing_pipeline: A scikit-learn ColumnTransformer that handles all data preprocessing.
 
         label_col: The name of the label/target column.
-
-        model_type: One of 'classification' or 'regression'. This is used by the mlflow.evaluate() method to calculated
-                      statistics on the evaluation dataset.
-
-        preprocessing_pipeline:
 
         random_state: And integer to used for initializing methods that perform operations such as train/test split.
 
@@ -84,7 +83,7 @@ class SkLearnPipelineBase(ABC):
         return classification_pipeline
 
     @abstractmethod
-    def train(self):
+    def train(self) -> None:
         """
         The model training code.
         """
@@ -92,23 +91,35 @@ class SkLearnPipelineBase(ABC):
 
 class SkLearnHyperoptTrainer(SkLearnPipelineBase, MLflowExperimentMixin):
     """
+    A scikit-learn pipeline based model training workflow that tunes hyperparameters
+    using hyperopt.
 
     Arguments:
        delta_feature_table: The name of the Delta table containing the model features.
 
        delta_train_val_id_table: The namne of the Delta table that contains the column of observations primary keys
-                               that make up the training and evaluation datasets.
+                                 that make up the training and evaluation datasets.
+
+       train_size: The proportion of observations held for the training dataset; the remaining are used for
+                   the validation dataset.
+
+       tune: A tuner class that handles hyperparameter tuning.
+
+       mlflow_experiment_location: Mflow experiment location where run will be logged.
+
+       mlflow_run_description: A desciption to log with the MLflow run.
+
     """
 
     def __init__(
         self,
         *,
-        delta_feature_table,
-        delta_train_val_id_table,
+        delta_feature_table: str,
+        delta_train_val_id_table: str,
         train_size: float,
         tuner,
         mlflow_experiment_location: str,
-        mlflow_run_description: str,
+        mlflow_run_description: str = "",
         **kwargs,
     ):
         self.delta_feature_table = delta_feature_table
@@ -122,7 +133,7 @@ class SkLearnHyperoptTrainer(SkLearnPipelineBase, MLflowExperimentMixin):
         self.mlflow_run_description = mlflow_run_description
         super().__init__(**kwargs)
 
-    @mlflow_hyperopt_experiment
+    @mlflow_experiment
     def train(self) -> None:
         print("Splitting features into training and validation datasets")
         self.X_train, self.X_val, self.y_train, self.y_val = train_val_split(
@@ -133,7 +144,6 @@ class SkLearnHyperoptTrainer(SkLearnPipelineBase, MLflowExperimentMixin):
             self.random_state,
         )
 
-        print("Searching hyperparameter space")
         self.X_train_transformed = self.preprocessing_pipeline.fit_transform(
             self.X_train
         )
