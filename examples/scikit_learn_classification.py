@@ -7,9 +7,13 @@
 # Example pip installation from gemfury
 # Private repo - create Databricks Secret and pass is as a cluster environment variable: GEMFURY_TOKEN={{secrets/gemfury/GEMFURY_TOKEN}}
 # See documentation: https://docs.databricks.com/security/secrets/secrets.html#reference-a-secret-in-an-environment-variable
-# %pip install training-templates --index-url https://$GEMFURY_TOKEN:@pypi.fury.io/marshackvb --extra-index-url https://pypi.org/simple -q
+# %pip install training-templates==0.1.5 --index-url https://$GEMFURY_TOKEN:@pypi.fury.io/marshackvb --extra-index-url https://pypi.org/simple -q
 # Public repo
 # %pip install training-templates==0.1.0 --index-url https://pypi.fury.io/marshackvb --extra-index-url https://pypi.org/simple -q
+
+# COMMAND ----------
+
+# MAGIC %pip install training-templates==0.1.5 --index-url https://$GEMFURY_TOKEN:@pypi.fury.io/marshackvb --extra-index-url https://pypi.org/simple -q
 
 # COMMAND ----------
 
@@ -37,7 +41,6 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 
-#from training_templates.tuners import XGBoostHyperoptTuner, SkLearnHyperoptTuner
 from training_templates.tuners import Tuner
 from training_templates import SkLearnHyperoptTrainer
 from training_templates.data_utils import sample_spark_dataframe, spark_train_test_split
@@ -65,7 +68,7 @@ display(spark.table(raw_features_table))
 train_table_name, test_table_name = spark_train_test_split(feature_table_name=raw_features_table,
                                                            unique_id='PassengerId',
                                                            train_val_size=0.85,
-                                                           allow_overwrite=True)
+                                                           allow_overwrite=False)
 
 # COMMAND ----------
 
